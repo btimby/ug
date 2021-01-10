@@ -14,23 +14,23 @@ const WT = new WebTorrent();
 
 
 function serveApp(obj, payload) {
-  const { name, author, key, bundle } = obj;
-  const id = key.public;
+  const id = obj.signature;
 
   console.log('Validating signature')
   verify(obj, payload);
+  // TODO: open WebRTC for messaging and add peer info.
 
   console.log('Engine, serving:', obj);
 
   const files = [
     new File([JSON.stringify(obj)], 'app.json'),
     new File([payload], obj.bundle),
-    // TODO: open WebRTC for messaging and add peer info.
   ];
 
   const opts = {
     name: id,
     announce: TRACKERS,
+    comment: obj.description,
   };
 
   return new Promise((resolve, reject) => {
@@ -86,16 +86,21 @@ function fetchApp(hash) {
         });
       }
 
+      console.log('Parsing app description');
       _getFile('app.json')
         .then((content) => {
           // We must read the json app description to determine the bundle file name.
           const obj = JSON.parse(content.toString());
 
+          console.log(`Fetching bundle ${obj.bundle}`);
           _getFile(obj.bundle)
             .then((content) => {
               const body = content.toString();
 
+              console.log('Verifying signature.');
               verify(obj, body);
+
+              console.log('Application loaded.');
               resolve([obj, body]);
             })
             .catch((e) => {
@@ -109,11 +114,14 @@ function fetchApp(hash) {
 
     // Torrent may be locally seeded, or already downloaded / downloading.
     const torrent = WT.get(hash);
+    const opts = {
+      announce: TRACKERS,
+    };
 
     if (torrent) {
       _extractBundle(torrent);
     } else {
-      WT.add(hash, {announce: TRACKERS}, (torrent) => {
+      WT.add(hash, opts, (torrent) => {
         // TODO: return via promise the bundle / payload.
         _extractBundle(torrent);
       });
@@ -126,7 +134,7 @@ console.log('Engine, starting');
 if (chrome) {
   // This does not currently work, see:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=64100&q=registerprotocolhandler%20extension&can=2
-  const url = chrome.runtime.getURL('/html/view.html?hash=%s');
+  const url = chrome.runtime.getURL('/dist/html/view.html?hash=%s');
   console.log(url);
   try {
     navigator.registerProtocolHandler(
