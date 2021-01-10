@@ -23,7 +23,7 @@ Web Underground websites / web applications are very similar to conventional one
 This project includes a simple sample TODO application. This application is an SPA using vue.js, it follows the lead of many sample applications, providing a simple `localStorage` based TODO manager. To build this application, you must first generate a key pair, then compile this app.
 
 ```bash
-# make todo-key
+# make todo/app.pem
 # make todo
 ```
 
@@ -39,6 +39,13 @@ The ability to include files beyond the currently supported `bundle.html`. This 
 
  - An asset loader must be implemented. This will resemble `view.html` which currently fetches and renders the `bundle.html` contained within the torrent.
  - `view.html` or the compilation process must pre-process each included file to change URIs to reference a loader, example, style sheets, scripts images.
+
+### Development
+
+To contriute to this project, you will need to know a few things.
+
+ - To run tests, do `make test`.
+ - To start continuous build / install extension in Firefox for testing do `make watch && make host`.
 
 ### Development tools.
 
