@@ -1,3 +1,10 @@
+#log {
+    border: 1px solid #ddd;
+    width: 600px;
+    height: 200px;
+    overflow: auto;
+}
+
 #log p {
     white-space: pre;
     font-family: monospace;
@@ -9,3 +16,15 @@
 #log p.level-2 { color: black; }
 #log p.level-3 { color: yellow; }
 #log p.level-4 { color: red; }
+
+div.link {
+    margin: 20px 0 20px;
+}
+
+table {
+    margin-bottom: 20px;
+}
+
+#remove {
+    background-color: red;
+}

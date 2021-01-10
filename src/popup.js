@@ -1,9 +1,8 @@
-const GO = document.getElementById('go');
-const URL = document.getElementById('url');
-const SERVE = document.getElementById('serve');
+const $ = require('cash-dom');
+
 
 function openView() {
-    var hash = URL.value;
+    var hash = $('#url').val();
 
     console.log(`Opening UG tab: ${hash}`);
     browser.tabs.create({
@@ -24,7 +23,7 @@ function openServe() {
     window.close();
 }
 
-function onKeyup(ev) {
+function keyUp(ev) {
     var charCode = (typeof ev.which === 'number') ? ev.which : ev.keyCode;
 
     if (charCode === 13) {
@@ -33,9 +32,6 @@ function onKeyup(ev) {
 }
 
 // Set up event handlers.
-GO.addEventListener('click', openView);
-SERVE.addEventListener('click', openServe);
-
-// Focus input field.
-URL.focus();
-URL.addEventListener('keyup', onKeyup);
+$('#go').on('click', openView);
+$('#serve').on('click', openServe);
+$('#url').on('keyup', keyUp);

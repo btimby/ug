@@ -6,22 +6,34 @@
         <link rel="stylesheet" href="/dist/css/serve.css">
     </head>
     <body>
-        <input id="app" type='file' placeholder="bundle"/></body><br/>
-        <br/><br/>
-        URL: <a id="link" href="#"></a><br/>
-        <table>
-            <tr>
-                <td>Peers</td>
-                <td>Uploaded</td>
-                <td>Speed</td>
-            </tr>
-            <tr>
-                <td><span id="peers">0</span></td>
-                <td><span id="bytes">0</span></td>
-                <td><span id="speed">0</span></td>
-            </tr>
-        </table><br/>
-        <div id="log"></div><br/>
+        <input id="app" type='file' placeholder="bundle"/>
+        <button id="stop" title="Stop seeding for now">Stop</button>
+        <button id="remove" title="Remove from storage">Remove</button>
+
+        <div id="runtime" style="display: none">
+            <div class="link">
+                <span>URL:</span>
+                <a id="link" href="#"></a>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Peers</th>
+                        <th>Uploaded</th>
+                        <th>Speed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span id="peers">0</span></td>
+                        <td><span id="bytes">0</span></td>
+                        <td><span id="speed">0</span></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div id="log"></div>
+            <input type="checkbox" id="tail" value="true"/> Tail
+        </div>
     </body>
 
     <!-- Included here to avoid loading during tests // -->

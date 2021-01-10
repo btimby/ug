@@ -13,6 +13,7 @@
   "author": "Ben Timby <btimby@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "cash-dom": "^8.1.0",
     "crypto-js": "^4.0.0",
     "jsrsasign": "^10.1.4",
     "jszip": "^3.5.0",

@@ -1,12 +1,6 @@
+const $ = require('cash-dom');
 const JSZip = require('jszip');
 
-
-const APP = document.getElementById('app');
-const LOG = document.getElementById('log');
-const LINK = document.getElementById('link');
-const PEERS = document.getElementById('peers');
-const BYTES = document.getElementById('bytes');
-const SPEED = document.getElementById('speed');
 
 const LOG_LEVEL = {
   DEBUG: 1,
@@ -16,6 +10,13 @@ const LOG_LEVEL = {
   ERROR: 4,
 };
 
+
+function tail() {
+  if ($('#tail').prop('checked')) {
+    const log = $('#log')[0];
+    log.scrollTop = log.scrollHeight - log.clientHeight;
+  }
+}
 
 function log() {
   // First argument is the log message. Subsequent items are formatted into
@@ -49,35 +50,24 @@ function log() {
     msg = msg.replace(fmt, arg);
   }
 
-  const p = document.createElement('p');
-
   const now = new Date();
   const date = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
   const time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
   var ts = `${date} ${time}`;
 
-  p.innerHTML = `[${ts}] ${msg}`;
-  p.setAttribute('class', `level-${lvl}`);
-  LOG.appendChild(p);
-}
-
-function logClear() {
-  let p;
-
-  while(true) {
-    const p = LOG.getElementsByTagName('p');
-    if (p.length === 0) {
-      break;
-    }
-    p[0].remove();
-  }
+  const p = $('<p>')
+    .text(`[${ts}] ${msg}`)
+    .attr('class', `level-${lvl}`)
+    .appendTo($('#log'));
+  tail();  
 }
 
 function setup(id, torrent) {
   const url = `web+ug://${torrent.infoHash}`;
   console.log(`Setting up logging for ${id}, ${torrent}`);
-  LINK.setAttribute('href', url);
-  LINK.innerHTML = url;
+  $('#link')
+    .attr('href', url)
+    .text(url);
 
   log('Seeding, infoHash: {0}', torrent.infoHash);
   log('Seeding, magnetUri: {0}', torrent.magnetUri);
@@ -93,19 +83,22 @@ function setup(id, torrent) {
   });
 
   setInterval(() => {
-    PEERS.innerText = torrent.numPeers;
-    BYTES.innerText = torrent.uploaded;
-    SPEED.innerText = torrent.uploadSpeed;
+    $('#peers').text(torrent.numPeers);
+    $('#bytes').text(torrent.uploaded);
+    $('#speed').text(torrent.uploadSpeed);
   }, 1000);
+
+  $('#runtime').show();
 }
 
-function loadApp() {
-  const file = this.files[0];
+function load() {
+  const file = document.getElementById('app').files[0];
+
   if (!file) {
     return;
   }
 
-  logClear();
+  $('#log').empty();
   log('Loading {1} byte application from {0}.', file.name, file.size);
 
   JSZip
@@ -144,9 +137,24 @@ function loadApp() {
     });
 }
 
+function stop() {
+  $('#app').val(null);
+  $('#runtime').hide();
+}
 
-APP.addEventListener('change', loadApp);
+function remove() {
+  if (!confirm('Forget about this application?')) {
+    return;
+  }
+
+  stop();
+}
+
+$('#app').on('change', load);
+$('#stop').on('click', stop);
+$('#remove').on('click', remove);
+$('#tail').on('click', tail);
 
 if (window) {
-  loadApp.bind(APP)();
+  load();
 }
