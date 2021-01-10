@@ -24,7 +24,7 @@ function serveApp(obj, payload) {
 
   const files = [
     new File([JSON.stringify(obj)], 'app.json'),
-    new File([payload], 'bundle.html'),
+    new File([payload], obj.bundle),
     // TODO: open WebRTC for messaging and add peer info.
   ];
 
@@ -59,40 +59,48 @@ function serveApp(obj, payload) {
   });
 }
 
-function _getFile(torrent, path) {
-  return new Promise((resolve, reject) => {
-    const file = torrent.files.find((file) => {
-      return file.name === path;
-    });
-
-    if (!file) {
-      // File not found.
-      reject(new Error(`No such path ${path} in torrent`));
-      return;
-    }
-
-    file.getBuffer((e, buffer) => {
-      if (e) {
-        reject(e);
-        return;
-      }
-      resolve(buffer);
-    });
-  });
-}
-
 function fetchApp(hash) {
   console.log(`Engine, fetching: ${hash}`);
 
   return new Promise((resolve, reject) => {
     function _extractBundle(torrent) {
-      Promise.all([_getFile(torrent, 'app.json'), _getFile(torrent, 'bundle.html')])
-        .then(([app, buffer]) => {
-          const obj = JSON.parse(app.toString());
-          const body = buffer.toString();
+      function _getFile(path) {
+        return new Promise((resolve, reject) => {
+          const file = torrent.files.find((file) => {
+            return file.name === path;
+          });
+      
+          if (!file) {
+            // File not found.
+            reject(new Error(`No such path ${path} in torrent`));
+            return;
+          }
+      
+          file.getBuffer((e, buffer) => {
+            if (e) {
+              reject(e);
+              return;
+            }
+            resolve(buffer);
+          });
+        });
+      }
 
-          verify(obj, body);
-          resolve([obj, body]);
+      _getFile('app.json')
+        .then((content) => {
+          // We must read the json app description to determine the bundle file name.
+          const obj = JSON.parse(content.toString());
+
+          _getFile(obj.bundle)
+            .then((content) => {
+              const body = content.toString();
+
+              verify(obj, body);
+              resolve([obj, body]);
+            })
+            .catch((e) => {
+              reject(e);
+            });
         })
         .catch((e) => {
           reject(e);

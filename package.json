@@ -8,8 +8,7 @@
     "test-node": "mocha --recursive --full-trace tests/node/**/test_*.js",
     "vendor": "for file in webextension-polyfill/dist/browser-polyfill.min.js; do cp node_modules/${file} dist/js/vendor/$(basename ${file}); done",
     "dist": "globify 'src/*.js' -u src/cli.js -o dist/js",
-    "watch": "globify 'src/*.js' -u src/cli.js -w -o dist/js",
-    "todo": "node src/cli.js compile todo/app.json"
+    "watch": "globify 'src/*.js' -u src/cli.js -w -o dist/js"
   },
   "author": "Ben Timby <btimby@gmail.com>",
   "license": "MIT",

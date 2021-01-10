@@ -47,10 +47,10 @@ function verify(obj, payload) {
   assert.strictEqual(hash, SHA256(payload).toString(), 'Invalid hash');
 }
 
-function compile(path) {
+function compile(inPath, outPath) {
   return new Promise((resolve, reject) => {
-    const app = fs.readFileSync(path);
-    const basePath = pathlib.dirname(path);
+    const app = fs.readFileSync(inPath);
+    const basePath = pathlib.dirname(inPath);
     const obj = JSON.parse(app);
     const {name, bundle: bundlePath, key: keyPath } = obj;
     const zip = new JSZip();
@@ -60,9 +60,12 @@ function compile(path) {
     sign(obj, payload.toString(), pem);
   
     zip.file('app.json', JSON.stringify(obj));
-    zip.file('bundle.html', payload);
+    zip.file(bundlePath, payload);
   
-    const outPath = pathlib.join(process.cwd(), `${name}.app`);
+    if (!outPath) {
+      outPath = pathlib.join(process.cwd(), `${name}.app`);
+    }
+
     zip
       .generateNodeStream({type: 'nodebuffer', streamFiles: true})
       .pipe(fs.createWriteStream(outPath))

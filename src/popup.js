@@ -2,7 +2,7 @@ const GO = document.getElementById('go');
 const KEYWORD = document.getElementById('keyword');
 const SERVE = document.getElementById('serve');
 
-function openClient() {
+function openView() {
     var hash = KEYWORD.value;
 
     console.log(`Opening UG tab: ${hash}`);
@@ -36,6 +36,6 @@ function onKeyup(ev) {
 KEYWORD.focus();
 
 // Set up event handlers.
-GO.addEventListener('click', openClient);
+GO.addEventListener('click', openView);
 SERVE.addEventListener('click', openServe);
 KEYWORD.addEventListener('keyup', onKeyup);

@@ -22,9 +22,11 @@ watch: vendor
 todo/app.pem:
 	openssl genrsa -out todo/app.pem
 
+todo.app: todo/app.pem todo/app.json todo/index.html
+	node src/cli.js compile todo/app.json
+
 .PHONY: todo
-todo: todo/app.pem
-	npm run todo
+todo: todo.app
 
 .PHONY: test-browser
 test-browser: dist

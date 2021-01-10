@@ -1,15 +1,20 @@
-const os = require('os');
 const { compile } = require('./index');
 
 
 function main(args) {
   switch (args[0]) {
     case 'compile':
+      // inPath is required.
       if (!args[1]) {
         console.log('Must provide path to app.json file.');
         process.exit(1);
       }
-      compile(args[1])
+
+      const inPath = args[1];
+      // outPath will be generated if omitted.
+      const outPath = args[2];
+
+      compile(inPath, outPath)
         .then((path) => console.log(`Done, ${path} written.`));
       break;
 

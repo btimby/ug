@@ -107,29 +107,35 @@ function loadApp() {
     .loadAsync(file)
     .then((zip) => {
       log('Extracting files.')
-      Promise
-        .all([
-          zip.files['app.json'].async('string'),
-          zip.files['bundle.html'].async('string')
-        ])
-        .then(([json, bundle]) => {
-          const obj = JSON.parse(json);
-          const payload = bundle;
+      zip.files['app.json']
+        .async('string')
+        .then((content) => {
+          const obj = JSON.parse(content);
 
-          log('Initializing: {0}', obj);
-          browser.runtime
-            .getBackgroundPage()
-            .then((bg) => {
-              bg
-                .serveApp(obj, bundle)
-                .then(([id, torrent]) => {
-                  setup(id, torrent);
-                })
-                .catch((e) => {
-                  console.log(e);
+          zip.files[obj.bundle]
+            .async('string')
+            .then((bundle) => {
+              log('Initializing: {0}', obj);
+              browser.runtime
+                .getBackgroundPage()
+                .then((bg) => {
+                  bg
+                    .serveApp(obj, bundle)
+                    .then(([id, torrent]) => {
+                      setup(id, torrent);
+                    })
+                    .catch((e) => {
+                      console.log(e);
+                    });
                 });
+            })
+            .catch((e) => {
+              console.log(e);
             });
-        });
+          })
+          .catch((e) => {
+            console.log(e);
+          });
     });
 }
 
