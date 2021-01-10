@@ -84,8 +84,15 @@ function setup(id, torrent) {
   log('Seeding, infoHash: {0}', torrent.infoHash);
   log('Seeding, magnetUri: {0}', torrent.magnetUri);
 
-  torrent.on('', log);
+  torrent.on('warning', log);
   torrent.on('error', log);
+
+  torrent.on('wire', (peer, addr) => {
+    log('Peer {0} connected', addr);
+  });
+  torrent.on('upload', (bytes) => {
+    log('Sent {0} bytes', bytes);
+  });
 
   setInterval(() => {
     PEERS.innerText = torrent.numPeers;
