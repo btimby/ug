@@ -1,13 +1,13 @@
 const GO = document.getElementById('go');
-const KEYWORD = document.getElementById('keyword');
+const URL = document.getElementById('url');
 const SERVE = document.getElementById('serve');
 
 function openView() {
-    var hash = KEYWORD.value;
+    var hash = URL.value;
 
     console.log(`Opening UG tab: ${hash}`);
     browser.tabs.create({
-      'url': `/dist/html/view.html?hash=${hash}`,
+      'url': `/dist/html/view.html?url=${hash}`,
     });
 
     // Close the popup
@@ -28,14 +28,14 @@ function onKeyup(ev) {
     var charCode = (typeof ev.which === 'number') ? ev.which : ev.keyCode;
 
     if (charCode === 13) {
-        openClient();
+        openView();
     }
 }
-
-// Focus input field.
-KEYWORD.focus();
 
 // Set up event handlers.
 GO.addEventListener('click', openView);
 SERVE.addEventListener('click', openServe);
-KEYWORD.addEventListener('keyup', onKeyup);
+
+// Focus input field.
+URL.focus();
+URL.addEventListener('keyup', onKeyup);
