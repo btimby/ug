@@ -1,0 +1,31 @@
+<html>
+    <meta charset="utf-8">
+    <head>
+        <title>Web Underground :: serve</title>
+        <link rel="stylesheet" href="/dist/css/index.css">
+        <link rel="stylesheet" href="/dist/css/serve.css">
+    </head>
+    <body>
+        <input id="app" type='file' placeholder="bundle"/></body><br/>
+        <br/><br/>
+        Link (Firefox only):<a id="link" href="#"></a><br/>
+        Address: <input id="address" type="text"/><br/>
+        <table>
+            <tr>
+                <td>Peers</td>
+                <td>Uploaded</td>
+                <td>Speed</td>
+            </tr>
+            <tr>
+                <td><span id="peers">0</span></td>
+                <td><span id="bytes">0</span></td>
+                <td><span id="speed">0</span></td>
+            </tr>
+        </table><br/>
+        <div id="log"></div><br/>
+    </body>
+
+    <!-- Included here to avoid loading during tests // -->
+    <script type="text/javascript" src="/dist/js/vendor/browser-polyfill.min.js"></script>
+    <script type="text/javascript" src="/dist/js/serve.js"></script>
+</html>

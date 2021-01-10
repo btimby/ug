@@ -1,0 +1,8 @@
+{
+    "name": "todo",
+    "description": "Web Underground test application :: todo",
+    "version": "1.0.0",
+    "author": "Ben Timby <btimby@gmail.com>",
+    "bundle": "bundle.html",
+    "key": "todo.pem"
+}
