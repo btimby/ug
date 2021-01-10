@@ -1,4 +1,5 @@
 const WebTorrent = require('webtorrent');
+const LSChunkStore = require('ls-chunk-store');
 const createTorrent = require('create-torrent');
 const parseTorrent = require('parse-torrent');
 const { verify } = require('./index');
@@ -10,7 +11,9 @@ const TRACKERS = [
   // "wss://tracker.fastcast.nz",
   // "wss://tracker.btorrent.xyz"
 ];
-const WT = new WebTorrent();
+const WT = new WebTorrent({
+  store: LSChunkStore,
+});
 
 
 function serveApp(obj, payload) {
@@ -129,12 +132,16 @@ function fetchApp(hash) {
   });
 }
 
-console.log('Engine, starting');
+function start() {
+  console.log('Engine, starting');
+
+  // TODO: load past applications from localStorage and serve them.
+}
 
 if (chrome) {
   // This does not currently work, see:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=64100&q=registerprotocolhandler%20extension&can=2
-  const url = chrome.runtime.getURL('/dist/html/view.html?hash=%s');
+  const url = chrome.runtime.getURL('/dist/html/view.html?url=%s');
   console.log(url);
   try {
     navigator.registerProtocolHandler(
@@ -142,6 +149,10 @@ if (chrome) {
   } catch (e) {
     console.log('Error installing protocol handler', e);    
   }
+}
+
+if (window) {
+  start();
 }
 
 // Make available to rest of extension.
