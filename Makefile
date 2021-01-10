@@ -19,8 +19,11 @@ vendor: vendorclean
 watch: vendor
 	npm run watch
 
+todo/app.pem:
+	openssl genrsa -out todo/app.pem
+
 .PHONY: todo
-todo:
+todo: todo/app.pem
 	npm run todo
 
 .PHONY: test-browser

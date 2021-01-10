@@ -4,5 +4,5 @@
     "version": "1.0.0",
     "author": "Ben Timby <btimby@gmail.com>",
     "bundle": "bundle.html",
-    "key": "todo.pem"
+    "key": "app.pem"
 }
