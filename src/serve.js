@@ -3,7 +3,6 @@ const JSZip = require('jszip');
 
 const APP = document.getElementById('app');
 const LOG = document.getElementById('log');
-const ADDR = document.getElementById('address');
 const LINK = document.getElementById('link');
 const PEERS = document.getElementById('peers');
 const BYTES = document.getElementById('bytes');
@@ -79,7 +78,6 @@ function setup(id, torrent) {
   console.log(`Setting up logging for ${id}, ${torrent}`);
   LINK.setAttribute('href', url);
   LINK.innerHTML = url;
-  ADDR.value = torrent.infoHash;
 
   log('Seeding, infoHash: {0}', torrent.infoHash);
   log('Seeding, magnetUri: {0}', torrent.magnetUri);
