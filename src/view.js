@@ -68,17 +68,17 @@ function render(obj, body) {
 
 function viewApp() {
   const query = parseQs(window.location.search.substring(1));
-  let hash = query.hash;
+  let url = query.url;
 
-  if (hash.startsWith('web+ug://')) {
-    hash = hash.substring(9);
+  if (url.startsWith('web+ug://')) {
+    url = url.substring(9);
   }
 
   browser.runtime
     .getBackgroundPage()
     .then((bg) => {
       bg
-        .fetchApp(hash)
+        .fetchApp(url)
         .then(([obj, body]) => {
           render(obj, body);
         })

@@ -24,7 +24,7 @@
       {
         "protocol": "web+ug",
         "name": "Web Underground",
-        "uriTemplate": "/dist/html/view.html?hash=%s"
+        "uriTemplate": "/dist/html/view.html?url=%s"
       }
     ],
 
