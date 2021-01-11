@@ -2,7 +2,7 @@ const WebTorrent = require('webtorrent');
 const LSChunkStore = require('ls-chunk-store');
 const createTorrent = require('create-torrent');
 const parseTorrent = require('parse-torrent');
-const { verify } = require('./index');
+const { TorrentApplication, PackageApplication } = require('./index');
 
 
 const TRACKERS = [
@@ -11,134 +11,251 @@ const TRACKERS = [
   // "wss://tracker.fastcast.nz",
   // "wss://tracker.btorrent.xyz"
 ];
-const WT = new WebTorrent({
-  store: LSChunkStore,
-});
 
 
-function serveApp(obj, payload) {
-  const id = obj.signature;
+class PrefixedLocalStorage {
+  constructor(prefix) {
+    this.prefix = prefix;
+  }
 
-  console.log('Validating signature')
-  verify(obj, payload);
-  // TODO: open WebRTC for messaging and add peer info.
+  _makeKey() {
+    return `${this.prefix}-${key}`;
+  }
 
-  console.log('Engine, serving:', obj);
+  _key(i) {
+    return localStorage.key(i);
+  }
 
-  const files = [
-    new File([JSON.stringify(obj)], 'app.json'),
-    new File([payload], obj.bundle),
-  ];
+  setItem(key, value) {
+    localStorage.setItem(this._makeKey(key), value);
+  }
 
-  const opts = {
-    name: id,
-    announce: TRACKERS,
-    comment: obj.description,
-  };
+  getItem(key) {
+    return localStorage.getItem(this._makeKey(key));
+  }
 
-  return new Promise((resolve, reject) => {
-    // Create torrent to retrieve infoHash.
-    createTorrent(files, opts, (e, tmp) => {
-      if (e) {
-        reject(e);
-        return;
+  removeItem(key) {
+    localStorage.removeItem(this._makeKey(key));
+  }
+
+  clear() {
+    let toRemove = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+      if (localStorage._key(i).startsWith(this.prefix)) {
+        toRemove.push(localStorage.key(i));
       }
+    }
 
-      // Torrent is a uint8Array instance.
-      tmp = parseTorrent(tmp);
-
-      // Get torrent if it is currently active.
-      let torrent = WT.get(tmp.infoHash);
-
-      if (torrent) {
-        resolve([id, torrent]);
-        return;
-      }
-
-      WT.seed(files, opts, (torrent) => {
-        resolve([id, torrent]);
-      });
-    });  
-  });
+    for (let i = 0; i < toRemove.length; i++) {
+      locaStorage.removeItem(toRemove[i]);
+    }
+  }
 }
 
-function fetchApp(hash) {
-  console.log(`Engine, fetching: ${hash}`);
+class Server {
+  constructor(app, torrent, storage) {
+    this.app = app;
+    this.torrent = torrent;
+    this.storage = storage;
+  }
 
-  return new Promise((resolve, reject) => {
-    function _extractBundle(torrent) {
-      function _getFile(path) {
-        return new Promise((resolve, reject) => {
-          const file = torrent.files.find((file) => {
-            return file.name === path;
-          });
-      
-          if (!file) {
-            // File not found.
-            reject(new Error(`No such path ${path} in torrent`));
-            return;
+  destroy() {
+    return new Promise((resolve, reject) => {
+      if (!this.torrent) {
+        resolve();
+        return;
+      }
+
+      this.torrent.destroy(resolve);
+    });
+  }
+
+  flush() {
+    return new Promise((resolve, reject) => {
+      this.destroy.then(() => {
+        if (this.storage) {
+          this.storage.clear();
+        }
+        resolve();
+      });
+    });
+  }
+}
+
+
+class Engine {
+  constructor() {
+    // Servers stored by app.id.
+    this.servers = {};
+    this.wt = new WebTorrent({
+      store: LSChunkStore,
+    });
+  }
+
+  _createStorage(app) {
+    return new PrefixedLocalStorage(app.id);
+  }
+
+  _getOrCreateTorrent(app) {
+    /* Retrieves or creates a torrent for the given app. */
+    const opts = {
+      name: app.id,
+      announce: TRACKERS,
+      comment: app.description,
+    };
+
+    return new Promise((resolve, reject) => {
+      const fileObjs = [
+        new File([JSON.stringify(app._manifest())], 'app.json'),
+      ];
+
+      app.readFiles()
+        .then((files) => {
+          for (let i in files) {
+            fileObjs.push(new File([files[i].body], files[i].name));
           }
-      
-          file.getBuffer((e, buffer) => {
+
+          // Create torrent to retrieve infoHash.
+          createTorrent(fileObjs, opts, (e, tmp) => {
             if (e) {
               reject(e);
               return;
             }
-            resolve(buffer);
-          });
+      
+            // Torrent is a uint8Array instance.
+            tmp = parseTorrent(tmp);
+      
+            // Get torrent if it is currently active.
+            let torrent = this.wt.get(tmp.infoHash);
+      
+            if (torrent) {
+              resolve(torrent);
+              return;
+            }
+      
+            this.wt.seed(fileObjs, opts, (torrent) => {
+              resolve(torrent);
+            });
+          });  
         });
+    });
+  }
+
+  get(id) {
+    return this.servers[id];
+  }
+
+  createServer(file) {
+    return new Promise((resolve, reject) => {
+      PackageApplication
+        .load(file)
+        .then((app) => {
+          const server = this.servers[app.id];
+
+          if (server) {
+            resolve(server);
+            return;
+          }
+    
+          this._getOrCreateTorrent(app)
+            .then((torrent) => {
+              const storage = this._createStorage(app);
+              this.servers[app.id] = new Server(app, torrent, storage);
+              resolve(this.servers[app.id]);
+            })
+            .catch(reject);
+        })
+        .catch(reject);
+    });
+  }
+
+  fetch(id) {
+    const server = this.servers[id];
+
+    return new Promise((resolve, reject) => {
+      const _addServer = (torrent) => {
+        TorrentApplication.load(torrent)
+          .then((app) => {
+            // NOTE: no storage.
+            this.servers[id] = new Server(app, torrent);
+            resolve(this.servers[id]);
+          })
+          .catch(reject);
       }
 
-      console.log('Parsing app description');
-      _getFile('app.json')
-        .then((content) => {
-          // We must read the json app description to determine the bundle file name.
-          const obj = JSON.parse(content.toString());
+      if (server) {
+        resolve(server);
+        return;
+      }
+  
+      const torrent = this.wt.get(id);
+      if (torrent) {
+        _addServer(torrent);
+        return;
+      }
 
-          console.log(`Fetching bundle ${obj.bundle}`);
-          _getFile(obj.bundle)
-            .then((content) => {
-              const body = content.toString();
+      this.wt.add(id, opts, (torrent) => {
+          _addServer(torrent);
+      });
+    });
+  }
 
-              console.log('Verifying signature.');
-              verify(obj, body);
+  remove(id) {
+    const server = this.servers[id];
 
-              console.log('Application loaded.');
-              resolve([obj, body]);
-            })
-            .catch((e) => {
-              reject(e);
-            });
-        })
-        .catch((e) => {
-          reject(e);
-        });
-    }
+    return new Promise((resolve, reject) => {
+      if (!server) {
+        resolve();
+        return;
+      }
 
-    // Torrent may be locally seeded, or already downloaded / downloading.
-    const torrent = WT.get(hash);
-    const opts = {
-      announce: TRACKERS,
-    };
+      server.destroy(() => {
+        delete this.servers[id];
+        resolve();
+      });
+    });
+  }
 
-    if (torrent) {
-      _extractBundle(torrent);
-    } else {
-      WT.add(hash, opts, (torrent) => {
-        // TODO: return via promise the bundle / payload.
-        _extractBundle(torrent);
+  flush(id) {
+    const server = this.servers[id];
+
+    return new Promise((resolve, reject) => {
+      if (!server) {
+        resolve();
+        return;
+      }
+
+      server
+        .flush()
+        .then(resolve);
+    });
+  }
+
+  stats() {
+    const stats = {};
+
+    for (let server in self.servers) {
+      stats.push({
+        id: server.app.id,
       });
     }
-  });
+
+    return new Promise((resolve, reject) => {
+      resolve(stats);
+    });
+  }
 }
 
-function start() {
+function _start() {
   console.log('Engine, starting');
+  window.engine = new Engine();
 
   // TODO: load past applications from localStorage and serve them.
 }
 
-if (chrome) {
+// Only run in browser.
+if (window) {
   // This does not currently work, see:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=64100&q=registerprotocolhandler%20extension&can=2
   const url = chrome.runtime.getURL('/dist/html/view.html?url=%s');
@@ -149,17 +266,6 @@ if (chrome) {
   } catch (e) {
     console.log('Error installing protocol handler', e);    
   }
+
+  _start();
 }
-
-if (window) {
-  start();
-}
-
-// Make available to rest of extension.
-window.serveApp = serveApp;
-window.fetchApp = fetchApp;
-
-module.exports = {
-  serveApp,
-  fetchApp,
-};

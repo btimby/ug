@@ -1,8 +1,12 @@
+const $ = require('cash-dom');
+
+
 const RE_SCRIPT = /<script[^>]*>(.*?)<\/script>/gis;
 const RE_BODY = /<html[^>]*>(.*?)<\/html>/is;
 
 // TODO: identify all the necessary globals.
 const PREAMBLE = 'var [document, window] = arguments; ';
+const SANDBOX_ARGS = 'allow-forms allow-popups allow-modals allow-scripts allow-same-origin';
 
 
 function parseQs(qs) {
@@ -21,7 +25,8 @@ function parseQs(qs) {
   return obj;
 }
 
-function parseHtml(body) {
+function parseHtml(body, F) {
+  F = F || Function;
   // Fetch the content.
   var scripts = [];
   var redact = [];
@@ -32,7 +37,7 @@ function parseHtml(body) {
     if (tag[0].indexOf('src') !== -1) {
         continue;
     }
-    scripts.push(Function(PREAMBLE + tag[1]));
+    scripts.push(F(PREAMBLE + tag[1]));
     redact.push([RE_SCRIPT.lastIndex - tag[0].length, RE_SCRIPT.lastIndex]);
   }
 
@@ -50,19 +55,33 @@ function parseHtml(body) {
   return [(m) ? m[1] : body, scripts];
 }
 
-function render(obj, body) {
-  const doc = window.document;
+function render(server, sandbox) {
+  const app = server.app;
+  const frame = $('<iframe id="host">');
+
+  if (sandbox) {
+    frame.attr('sandbox', SANDBOX_ARGS);
+  }
+  frame.appendTo($('body'));
+
+  const doc = frame[0].contentDocument, win = frame[0].contentWindow;
   let scripts;
 
-  [body, scripts] = parseHtml(body);
-  // TODO: fix this.
-  doc.title = `Web Underground :: view :: ${obj.name}`;
-  doc.write(body);
-
-  // Execute scripts in context of document / window.
-  for (var i = 0; i < scripts.length; i++) {
-    scripts[i](doc, window);
-  }
+  app.readFile(app.fields.index)
+    .then((body) => {
+      [body, scripts] = parseHtml(body, win.Function);
+      // TODO: fix this.
+      document.title = `Web Underground :: view :: ${app.fields.name}`;
+      doc.write(body);
+    
+      // Execute scripts in context of iframe.
+      frame.show();
+      for (var i = 0; i < scripts.length; i++) {
+        scripts[i](doc, win);
+      }
+      doc.close();
+    })
+    .catch(console.log);
 }
 
 function viewApp() {
@@ -73,17 +92,10 @@ function viewApp() {
     url = url.substring(9);
   }
 
-  browser.runtime
-    .getBackgroundPage()
-    .then((bg) => {
-      bg
-        .fetchApp(url)
-        .then(([obj, body]) => {
-          render(obj, body);
-        })
-        .catch((e) => {
-          console.log(e);
-        });
+  window
+    .fetch(url)
+    .then((server) => {
+      render(server, true);
     });
 }
 
