@@ -54,7 +54,8 @@ function parseHtml(body, F) {
   return [(m) ? m[1] : body, scripts];
 }
 
-function render(obj, body, sandbox) {
+function render(server, sandbox) {
+  const app = server.app;
   const frame = $('<iframe id="host">');
 
   if (sandbox) {
@@ -65,7 +66,7 @@ function render(obj, body, sandbox) {
   const doc = frame[0].contentDocument, win = frame[0].contentWindow;
   let scripts;
 
-  [body, scripts] = parseHtml(body, win.Function);
+  [body, scripts] = parseHtml(app.index, win.Function);
   // TODO: fix this.
   document.title = `Web Underground :: view :: ${obj.name}`;
   doc.write(body);
@@ -85,14 +86,10 @@ function viewApp() {
     url = url.substring(9);
   }
 
-  browser.runtime
-    .getBackgroundPage()
-    .then((bg) => {
-      bg
-        .fetchApp(url)
-        .then(([obj, body]) => {
-          render(obj, body, true);
-        });
+  window
+    .fetch(url)
+    .then((server) => {
+      render(server, true);
     });
 }
 

@@ -30,13 +30,20 @@ class Application {
   }
 
   _loadFiles(baseDir) {
+    this._files = [];
+
     for (let desc of this._contents) {
+      const pattern = pathlib.join(baseDir, desc.pattern);
       let files;
 
-      if (!isGlob(desc.pattern)) {
-        files = [desc.pattern];
+      if (!isGlob(pattern)) {
+        files = [pattern];
       } else {
-        files = glob().readdirSync(pathlib.join(baseDir, desc.pattern));
+        files = glob().readdirSync(pattern);
+      }
+
+      for (let file in files) {
+        this._files.push();
       }
     }
   }
@@ -49,11 +56,6 @@ class Application {
     /* Verifies the signature and hashes of the application. */
   }
 
-  load(file) {
-    /* Loads an application from a zip file. */
-    this.verify();
-  }
-
   save(path) {
     /* Saves a loaded or parsed Application to a zip file. */
     this.sign();
@@ -63,6 +65,14 @@ class Application {
     /* Creates a torrent from the application. */
   }
 
+  // NOTE: used by createServer().
+  static load(path) {
+    /* Loads an application from a zip file. */
+    const app = new Application();
+    app.verify();
+  }
+
+  // NOTE: used by compile().
   static parse(path) {
     /* Parses app.json and load all resources. */
     const attrs = JSON.parse(fs.readFileSync(path));

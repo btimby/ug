@@ -10,29 +10,28 @@ function _doPromise(name, ...args) {
     browser.runtime
       .getBackgroundPage()
       .then((bg) => {
-        bg[name](args)
-          .then((res) => resolve(res))
-          .catch((e) => reject(e));
+        bg.engine[name](args)
+          .then((res) => resolve(res));
       });
   });
 }
 
-window.engineServe = function engineServe(file) {
-  return _doPromise('serveApp', file);
+window.createServer = function createServer(file) {
+  return _doPromise('createServer', app);
 };
 
-window.engineStop = function engineStop() {
-  return _doPromise('stopApp', id);
+window.remove = function remove() {
+  return _doPromise('remove', id);
 };
 
-window.engineRemove = function engineRemove() {
-  return _doPromise('removeApp', id);
+window.flushServer = function flushServer() {
+  return _doPromise('flush', id);
 };
 
-window.engineFetch = function engineFetch() {
-  return _doPromise('fetchApp', id);
+window.fetch = function fetch() {
+  return _doPromise('fetch', id);
 };
 
-window.engineStats = function engineStats(id) {
+window.stats = function stats(id) {
   return _doPromise('stats', id);
 };

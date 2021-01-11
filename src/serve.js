@@ -63,30 +63,29 @@ function log() {
   tail();  
 }
 
-function setup(id, torrent) {
-  const url = `web+ug://${torrent.infoHash}`;
-  console.log(`Setting up logging for ${id}, ${torrent}`);
+function setup(server) {
+  const url = `web+ug://${server.torrent.infoHash}`;
+  console.log(`Setting up logging for ${server.app.id}`);
   $('#link')
     .attr('href', url)
     .text(url);
 
-  log('Seeding, infoHash: {0}', torrent.infoHash);
-  log('Seeding, magnetUri: {0}', torrent.magnetUri);
+  log('Seeding, infoHash: {0}', server.torrent.infoHash);
 
-  torrent.on('warning', log);
-  torrent.on('error', log);
+  server.torrent.on('warning', log);
+  server.torrent.on('error', log);
 
-  torrent.on('wire', (peer, addr) => {
+  server.torrent.on('wire', (peer, addr) => {
     log('Peer {0} connected', addr);
   });
-  torrent.on('upload', (bytes) => {
+  server.torrent.on('upload', (bytes) => {
     log('Sent {0} bytes', bytes);
   });
 
   setInterval(() => {
-    $('#peers').text(torrent.numPeers);
-    $('#bytes').text(torrent.uploaded);
-    $('#speed').text(torrent.uploadSpeed);
+    $('#peers').text(server.torrent.numPeers);
+    $('#bytes').text(server.torrent.uploaded);
+    $('#speed').text(server.torrent.uploadSpeed);
   }, 1000);
 
   $('#runtime').show();
@@ -102,18 +101,12 @@ function load() {
   $('#log').empty();
   log('Loading {1} byte application from {0}.', file.name, file.size);
 
-  extract(file)
-    .then(([obj, files]) => {
-      console.log('Yo');
-    })
-
-  /*engineServe(file)
-    .then(([id, torrent]) => {
-      setup(id, torrent);
-    })
-    .catch((e) => {
-      console.log(e);
-    });*/
+  Application
+    .load(file)
+    .then((app) => {
+      window.createServer(app)
+        .then((server) => setup(server));
+    });
 }
 
 function stop() {

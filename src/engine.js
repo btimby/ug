@@ -11,173 +11,224 @@ const TRACKERS = [
   // "wss://tracker.fastcast.nz",
   // "wss://tracker.btorrent.xyz"
 ];
-const WT = new WebTorrent({
-  store: LSChunkStore,
-});
 
 
-window.serveApp = function serveApp(file) {
-  extract(file)
-    .then(([obj, files]) => {
-      const id = obj.signature;
-      console.log('Engine, serving:', obj);
-      // TODO: open WebRTC for messaging and add peer info.
-
-      const fileObjs = [];
-      const keys = Object.keys(files);
-      for (let i = 0; i < keys.length; i++) {
-        fileObjs.push(new File([files[keys[i]]], keys[i]));
-      }
-
-      const opts = {
-        name: id,
-        announce: TRACKERS,
-        comment: obj.description,
-      };
-    
-      return new Promise((resolve, reject) => {
-        // Create torrent to retrieve infoHash.
-        createTorrent(fileObjs, opts, (e, tmp) => {
-          if (e) {
-            reject(e);
-            return;
-          }
-    
-          // Torrent is a uint8Array instance.
-          tmp = parseTorrent(tmp);
-    
-          // Get torrent if it is currently active.
-          let torrent = WT.get(tmp.infoHash);
-    
-          if (torrent) {
-            resolve([id, torrent]);
-            return;
-          }
-    
-          WT.seed(fileObjs, opts, (torrent) => {
-            resolve([id, torrent]);
-          });
-        });  
-      });
-    });
-};
-
-window.fetchApp = function fetchApp(id) {
-  console.log(`Engine, fetching: ${id}`);
-
-  return new Promise((resolve, reject) => {
-    function _extractBundle(torrent) {
-      function _getFile(path) {
-        return new Promise((resolve, reject) => {
-          const file = torrent.files.find((file) => {
-            return file.name === path;
-          });
-      
-          if (!file) {
-            // File not found.
-            reject(new Error(`No such path ${path} in torrent`));
-            return;
-          }
-      
-          file.getBuffer((e, buffer) => {
-            if (e) {
-              reject(e);
-              return;
-            }
-            resolve(buffer);
-          });
-        });
-      }
-
-      console.log('Parsing app description');
-      _getFile('app.json')
-        .then((content) => {
-          // We must read the json app description to determine the bundle file name.
-          const obj = JSON.parse(content.toString());
-
-          console.log(`Fetching bundle ${obj.bundle}`);
-          _getFile(obj.bundle)
-            .then((content) => {
-              const body = content.toString();
-
-              console.log('Verifying signature.');
-              verify(obj, body);
-
-              console.log('Application loaded.');
-              resolve([obj, body]);
-            })
-            .catch((e) => {
-              reject(e);
-            });
-        });
-    }
-
-    // Torrent may be locally seeded, or already downloaded / downloading.
-    const torrent = WT.get(id);
-    const opts = {
-      announce: TRACKERS,
-    };
-
-    if (torrent) {
-      _extractBundle(torrent);
-    } else {
-      WT.add(id, opts, (torrent) => {
-        // TODO: return via promise the bundle / payload.
-        _extractBundle(torrent);
-      });
-    }
-  });
-};
-
-window.stopApp = function stopApp(id) {
-  return new Promise((resolve, reject) => {
-    WT.remove(id, (e) => {
-      if (e) {
-        reject(e);
-        return;
-      }
-
-      resolve();
-    })  
-  });
-};
-
-window.removeApp = function removeApp(id) {
-  // TODO: remove torrent files from store.
-  // TODO: remove app information from localStorage (won't see next start).
-};
-
-window.stats = function stats(id) {
-  function _getStats(torrent) {
-    const stats = {
-      torrent,
-    };
-
-    return stats;
+class PrefixLocalStorage {
+  constructor(prefix) {
+    this.prefix = prefix;
   }
 
-  return new Promise((resolve, reject) => {
-    if (id) {
-      // get stats for specific id.
-      const torrent = WT.get(id);
+  _makeKey() {
+    return `${this.prefix}-${key}`;
+  }
 
-      if (!torrent) {
-        reject(new Error(`Invalid torrent id ${id}`));
+  _key(i) {
+    return localStorage.key(i);
+  }
+
+  setItem(key, value) {
+    localStorage.setItem(this._makeKey(key), value);
+  }
+
+  getItem(key) {
+    return localStorage.getItem(this._makeKey(key));
+  }
+
+  removeItem(key) {
+    localStorage.removeItem(this._makeKey(key));
+  }
+
+  clear() {
+    let toRemove = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+      if (localStorage._key(i).startsWith(this.prefix)) {
+        toRemove.push(localStorage.key(i));
+      }
+    }
+
+    for (let i = 0; i < toRemove.length; i++) {
+      locaStorage.removeItem(toRemove[i]);
+    }
+  }
+}
+
+class Server {
+  constructor(app, torrent, storage) {
+    this.wt = new WebTorrent({
+      store: LSChunkStore,
+    })
+    this.app = app;
+    this.torrent = torrent;
+    this.storage = storage;
+  }
+
+  destroy() {
+    return new Promise((resolve, reject) => {
+      if (!this.torrent) {
+        resolve();
         return;
       }
-      resolve(_getStats(torrent));
-    } else {
-      const stats = [];
-      for (let i = 0; i < WT.torrents.length; i++) {
-        stats.push(_getStats(torrent));
-      }
-      resolve(stats);
+
+      this.torrent.destroy(resolve);
+    });
+  }
+
+  flush() {
+    return new Promise((resolve, reject) => {
+      this.destroy.then(() => {
+        if (this.storage) {
+          this.storage.clear();
+        }
+        resolve();
+      });
+    });
+  }
+}
+
+
+class Engine {
+  constructor() {
+    // Servers stored by app.id.
+    this.servers = {};
+  }
+
+  static _createStorage(app) {
+    return new PrefixedLocalStorage(app.id);
+  }
+
+  static _getOrCreateTorrent(app) {
+    /* Retrieves or creates a torrent for the given app. */
+    const opts = {
+      name: app.id,
+      announce: TRACKERS,
+      comment: app.description,
+    };
+
+    return new Promise((resolve, reject) => {
+      // Create torrent to retrieve infoHash.
+      createTorrent(app.files, opts, (e, tmp) => {
+        if (e) {
+          reject(e);
+          return;
+        }
+  
+        // Torrent is a uint8Array instance.
+        tmp = parseTorrent(tmp);
+  
+        // Get torrent if it is currently active.
+        let torrent = this.wt.get(tmp.infoHash);
+  
+        if (torrent) {
+          resolve(torrent);
+          return;
+        }
+  
+        this.wt.seed(fileObjs, opts, (torrent) => {
+          resolve(torrent);
+        });
+      });  
+    });
+  }
+
+  get(id) {
+    return this.servers[id];
+  }
+
+  createServer(app) {
+    if (app.id in this.servers) {
+      return null;
     }
-  });
-};
+
+    return new Promise((resolve, reject) => {
+      Engine._getOrCreateTorrent(app)
+        .then((torrent) => {
+          const storage = Engine._createStorage(app);
+          const server = new Server(app, torrent, storage);
+          this.apps[app.id] = server;
+          resolve(server);
+        });
+    });
+  }
+
+  fetch(id) {
+    const server = this.servers[id];
+
+    function _addServer(torrent) {
+      const app = new TorrentApplication(torrent);
+      // NOTE: no storage.
+      server = new Server(app, torrent);
+      this.servers[id] = server;
+      return server;
+    }
+
+    return new Promise((resolve, reject) => {
+      if (server) {
+        resolve(server);
+        return;
+      }
+  
+      const torrent = this.wt.get(id);
+      if (torrent) {
+        resolve(_addServer(torrent));
+        return;
+      }
+
+      this.wt.add(id, opts, (torrent) => {
+          resolve(_addServer(torrent));
+      });
+    });
+  }
+
+  remove(id) {
+    const server = this.servers[id];
+
+    return new Promise((resolve, reject) => {
+      if (!server) {
+        resolve();
+        return;
+      }
+
+      server.destroy(() => {
+        delete this.servers[id];
+        resolve();
+      });
+    });
+  }
+
+  flush(id) {
+    const server = this.servers[id];
+
+    return new Promise((resolve, reject) => {
+      if (!server) {
+        resolve();
+        return;
+      }
+
+      server
+        .flush()
+        .then(resolve);
+    });
+  }
+
+  stats() {
+    const stats = {};
+
+    for (let server in self.servers) {
+      stats.push({
+        id: server.app.id,
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      resolve(stats);
+    });
+  }
+}
 
 function _start() {
   console.log('Engine, starting');
+  window.engine = new Engine();
 
   // TODO: load past applications from localStorage and serve them.
 }
