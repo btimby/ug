@@ -1,5 +1,6 @@
 const $ = require('cash-dom');
 const JSZip = require('jszip');
+const { extract } = require('./index');
 
 
 const LOG_LEVEL = {
@@ -101,40 +102,18 @@ function load() {
   $('#log').empty();
   log('Loading {1} byte application from {0}.', file.name, file.size);
 
-  JSZip
-    .loadAsync(file)
-    .then((zip) => {
-      log('Extracting files.')
-      zip.files['app.json']
-        .async('string')
-        .then((content) => {
-          const obj = JSON.parse(content);
+  extract(file)
+    .then(([obj, files]) => {
+      console.log('Yo');
+    })
 
-          zip.files[obj.bundle]
-            .async('string')
-            .then((bundle) => {
-              log('Initializing: {0}', obj);
-              browser.runtime
-                .getBackgroundPage()
-                .then((bg) => {
-                  bg
-                    .serveApp(obj, bundle)
-                    .then(([id, torrent]) => {
-                      setup(id, torrent);
-                    })
-                    .catch((e) => {
-                      console.log(e);
-                    });
-                });
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          })
-          .catch((e) => {
-            console.log(e);
-          });
-    });
+  /*engineServe(file)
+    .then(([id, torrent]) => {
+      setup(id, torrent);
+    })
+    .catch((e) => {
+      console.log(e);
+    });*/
 }
 
 function stop() {

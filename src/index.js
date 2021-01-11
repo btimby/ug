@@ -4,9 +4,96 @@ const { assert } = require('chai');
 const JSZip = require('jszip');
 const SHA256 = require('crypto-js/sha256');
 const rs = require('jsrsasign');
+const glob = require('glob-fs');
+const isGlob = require('is-glob');
 
 
-function sign(obj, payload, pem) {
+class Application {
+  /* Represents an application. */
+  constructor(name, description, version, author, key, contents, index) {
+    this.name = name;
+    this.description = description;
+    this.version = version;
+    this.author = author;
+    this._contents = contents;
+    this.index = index;
+    this._key = key;
+    this._files = {};
+  }
+
+  get privateKey() {
+    return this._key;
+  }
+
+  get publicKey() {
+    // Return private portion of the key.
+  }
+
+  _loadFiles(baseDir) {
+    for (let desc of this._contents) {
+      let files;
+
+      if (!isGlob(desc.pattern)) {
+        files = [desc.pattern];
+      } else {
+        files = glob().readdirSync(pathlib.join(baseDir, desc.pattern));
+      }
+    }
+  }
+
+  sign() {
+    /* Signs and generates hashes. */
+  }
+
+  verify() {
+    /* Verifies the signature and hashes of the application. */
+  }
+
+  load(file) {
+    /* Loads an application from a zip file. */
+    this.verify();
+  }
+
+  save(path) {
+    /* Saves a loaded or parsed Application to a zip file. */
+    this.sign();
+  }
+
+  toTorrent() {
+    /* Creates a torrent from the application. */
+  }
+
+  static parse(path) {
+    /* Parses app.json and load all resources. */
+    const attrs = JSON.parse(fs.readFileSync(path));
+    const app = new Application(
+      attrs.name, attrs.description, attrs.version, attrs.author, attrs.key,
+      attrs.contents, attrs.index);
+
+    app._loadFiles();
+    app.sign();
+
+    return app;
+  }
+
+  static fromTorrent(torrent) {
+    /* Creates an application from a torrent. */
+    return new TorrentApplication();
+  }
+}
+
+
+class TorrentApplication extends Application {
+
+}
+
+
+function compile(path) {
+  return Application.parse(path);
+}
+
+
+function sign(obj, pem) {
   // NOTE: modifies parameter `obj`.
   const key = rs.KEYUTIL.getKey(pem.toString());
   const pubKeyJWK = rs.KEYUTIL.getJWKFromKey(key);
@@ -16,8 +103,6 @@ function sign(obj, payload, pem) {
     n: pubKeyJWK.n,
   }));
 
-  // TODO: add SHA256 hash of bundle to obj.
-  obj.hash = SHA256(payload).toString();
   // Don't include the private key.
   obj.key = pubKey;
 
@@ -29,8 +114,8 @@ function sign(obj, payload, pem) {
   obj.signature = sig.sign();
 }
 
-function verify(obj, payload) {
-  const { key: pem, hash, signature } = obj;
+function verify(obj) {
+  const { key: pem, signature } = obj;
   const key = rs.KEYUTIL.getKey(pem);
   const keys = Object.keys(obj);
 
@@ -44,7 +129,36 @@ function verify(obj, payload) {
   sig.init(key);
   sig.updateString(msg);
   assert(sig.verify(signature), 'Invalid signature');
-  assert.strictEqual(hash, SHA256(payload).toString(), 'Invalid hash');
+  // Check hashes as files are extracted.
+  //assert.strictEqual(hash, SHA256(payload).toString(), 'Invalid hash');
+}
+
+function _addFiles(basePath, obj, zip) {
+  const fileHashes = [];
+
+  for (let i = 0; i < obj.files.length; i++) {
+    const file = obj.files[i];
+    let paths;
+  
+    if (isGlob(file.path)) {
+      paths = glob().readdirSync(pathlib.join(basePath, file.path));
+    } else {
+      paths = [pathlib.join(basePath, file.path)];
+    }
+
+    for (let ii = 0; ii < paths.length; ii++) {
+      const path = paths[i];
+      const body = fs.readFileSync(path);
+
+      fileHashes.push({
+        path: pathlib.relative(basePath, path),
+        hash: SHA256(body).toString(), 
+      });
+      zip.file(pathlib.relative(basePath, path), body);
+    }
+  }
+
+  obj.files = fileHashes;
 }
 
 function compile(inPath, outPath) {
@@ -52,16 +166,14 @@ function compile(inPath, outPath) {
     const app = fs.readFileSync(inPath);
     const basePath = pathlib.dirname(inPath);
     const obj = JSON.parse(app);
-    const {name, bundle: bundlePath, key: keyPath } = obj;
+    const {name, key: keyPath } = obj;
     const zip = new JSZip();
-    const payload = fs.readFileSync(pathlib.join(basePath, bundlePath));
     const pem = fs.readFileSync(pathlib.join(basePath, keyPath));
 
-    sign(obj, payload.toString(), pem);
-  
+    _addFiles(basePath, obj, zip);
     zip.file('app.json', JSON.stringify(obj));
-    zip.file(bundlePath, payload);
-  
+    sign(obj, pem);
+
     if (!outPath) {
       outPath = pathlib.join(process.cwd(), `${name}.app`);
     }
@@ -75,9 +187,70 @@ function compile(inPath, outPath) {
   });
 }
 
+function _checkFiles(obj, zip) {
+  const promises = [];
+
+  for (let i = 0; i < obj.files.length; i++) {
+    const file = obj.files[i];
+    promises.push(zip.files[file.path].async('string'));
+  }
+
+  return new Promise((resolve, reject) => {
+    Promise
+      .all(promises)
+      .then((bodies) => {
+        const files = {};
+
+        try {
+          for (let i = 0; i < obj.files.length; i++) {
+            const file = obj.files[i], body = bodies[i];
+
+            assert.strictEqual(file.hash, SHA256(body).toString(), 'Invalid hash');
+            files[file.path] = body;
+            resolve(files);
+          }
+        } catch (e) {
+          reject(e);
+        }
+      });
+  });
+}
+
+function extract(file) {
+  if (typeof(file) === 'string') {
+    file = fs.readFileSync(file);
+  }
+
+  return new Promise((resolve, reject) => {
+    JSZip
+    .loadAsync(file)
+    .then((zip) => {
+      //log('Extracting files.')
+      zip.files['app.json']
+        .async('string')
+        .then((content) => {
+          let obj;
+
+          try {
+            obj = JSON.parse(content);
+            verify(obj);
+          } catch (e) {
+            reject(e);
+            return;
+          }
+
+          _checkFiles(obj, zip)
+            .then((files) => {
+              resolve([obj, files]);
+            });
+        });
+    });
+  });
+}
 
 module.exports = {
   compile,
+  extract,
   sign,
   verify,
 };

@@ -2,6 +2,7 @@ module.exports = function(config) {
   config.set({
     frameworks: ['browserify', 'mocha', 'chai'],
     files: [
+      'tests/browser/bus_mock.js',
       'tests/browser/**/test_*.js',
     ],
     preprocessors: {

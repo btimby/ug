@@ -3,6 +3,12 @@
     "description": "Web Underground test application :: todo",
     "version": "1.0.0",
     "author": "Ben Timby <btimby@gmail.com>",
-    "bundle": "index.html",
-    "key": "app.pem"
+    "key": "app.pem",
+    "index": "index.html",
+
+    "contents": [
+        {
+            "path": "index.html"
+        }
+    ]
 }
