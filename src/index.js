@@ -250,11 +250,11 @@ class PackageApplication extends Application {
   }
 
   // NOTE: used by createServer().
-  static load(data) {
+  static load(file) {
     /* Loads an application from a zip file. */
     return new Promise((resolve, reject) => {
       JSZip
-        .loadAsync(data)
+        .loadAsync(file)
         .then((zip) => {
           //log('Extracting files.')
           zip.files['app.json']

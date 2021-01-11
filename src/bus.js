@@ -17,8 +17,8 @@ function _doPromise(name, ...args) {
   });
 }
 
-window.createServer = function createServer(app) {
-  return _doPromise('createServer', app);
+window.createServer = function createServer(file) {
+  return _doPromise('createServer', file);
 };
 
 window.remove = function remove(id) {

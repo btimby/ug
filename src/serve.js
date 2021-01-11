@@ -1,6 +1,5 @@
 const $ = require('cash-dom');
 const JSZip = require('jszip');
-const { PackageApplication } = require('./index');
 
 
 const LOG_LEVEL = {
@@ -100,19 +99,13 @@ function load() {
   }
 
   $('#log').empty();
+  $('#runtime').show();
   log('Loading {1} byte application from {0}.', file.name, file.size);
 
-  file
-    .arrayBuffer()
-    .then((data) => {
-      PackageApplication
-        .load(data)
-        .then((app) => {
-          window.createServer(app)
-            .then(setup)
-            .catch(console.log);
-        });
-      });
+  window
+    .createServer(file)
+    .then(setup)
+    .catch(log);
 }
 
 function stop() {

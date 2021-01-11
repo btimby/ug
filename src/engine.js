@@ -2,7 +2,7 @@ const WebTorrent = require('webtorrent');
 const LSChunkStore = require('ls-chunk-store');
 const createTorrent = require('create-torrent');
 const parseTorrent = require('parse-torrent');
-const { TorrentApplication } = require('./index');
+const { TorrentApplication, PackageApplication } = require('./index');
 
 
 const TRACKERS = [
@@ -146,20 +146,25 @@ class Engine {
     return this.servers[id];
   }
 
-  createServer(app) {
-    const server = this.servers[app.id];
-
+  createServer(file) {
     return new Promise((resolve, reject) => {
-      if (server) {
-        resolve(server);
-        return;
-      }
+      PackageApplication
+        .load(file)
+        .then((app) => {
+          const server = this.servers[app.id];
 
-      this._getOrCreateTorrent(app)
-        .then((torrent) => {
-          const storage = this._createStorage(app);
-          this.servers[app.id] = new Server(app, torrent, storage);
-          resolve(this.servers[app.id]);
+          if (server) {
+            resolve(server);
+            return;
+          }
+    
+          this._getOrCreateTorrent(app)
+            .then((torrent) => {
+              const storage = this._createStorage(app);
+              this.servers[app.id] = new Server(app, torrent, storage);
+              resolve(this.servers[app.id]);
+            })
+            .catch(reject);
         })
         .catch(reject);
     });
