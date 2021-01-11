@@ -10,257 +10,351 @@ const isGlob = require('is-glob');
 
 class Application {
   /* Represents an application. */
-  constructor(name, description, version, author, key, contents, index) {
-    this.name = name;
-    this.description = description;
-    this.version = version;
-    this.author = author;
-    this._contents = contents;
-    this.index = index;
-    this._key = key;
+  constructor(fields) {
+    this.fields = fields;
+    this._key = fields.key;
+    this._pub = null;
     this._files = {};
   }
 
   get privateKey() {
+    assert(this._key.isPrivate, 'No private key')
     return this._key;
   }
 
   get publicKey() {
-    // Return private portion of the key.
-  }
-
-  _loadFiles(baseDir) {
-    this._files = [];
-
-    for (let desc of this._contents) {
-      const pattern = pathlib.join(baseDir, desc.pattern);
-      let files;
-
-      if (!isGlob(pattern)) {
-        files = [pattern];
+    if (this._pub === null) {
+      if (this._key.isPrivate) {
+        // Extract public portion of the key.
+        const pubKeyJWK = rs.KEYUTIL.getJWKFromKey(this._key);
+        this._pub = rs.KEYUTIL.getPEM(rs.KEYUTIL.getKey({
+          e: pubKeyJWK.e,
+          kty: pubKeyJWK.kty,
+          n: pubKeyJWK.n,
+        }));
       } else {
-        files = glob().readdirSync(pattern);
-      }
-
-      for (let file in files) {
-        this._files.push();
+        this._pub = this._key;
       }
     }
+
+    return this._pub;
+  }
+
+  _manifest(exclude) {
+    const manifest = {};
+    const keys = Object.keys(this.fields);
+
+    for (let i in keys) {
+      const key = keys[i];
+      if (exclude && exclude.indexOf(key) !== -1) {
+        continue;
+      }
+      manifest[key] = this.fields[key];
+    }
+
+    // Only include public key.
+    manifest.key = this.publicKey;
+
+    return manifest;
   }
 
   sign() {
-    /* Signs and generates hashes. */
-  }
+    /* Signs fields. */
+    const manifest = this._manifest();
+    const str = JSON.stringify(manifest, (key, val) => (key === 'signature') ? undefined : val);
+    const sig = new rs.Signature({alg: 'SHA256withRSA'});
+    sig.init(this.privateKey);
+    sig.updateString(str);
+    this.fields.signature = manifest.signature = sig.sign();
+    return manifest;
+    }
 
   verify() {
     /* Verifies the signature and hashes of the application. */
+    if (!this.fields.signature) {
+      throw new Error('No signature');
+    }
+
+    const manifest = this._manifest(['signature']);
+    const str = JSON.stringify(manifest, (key, val) => (key === 'signature') ? undefined : val);
+    const sig = new rs.Signature({alg: 'SHA256withRSA'});
+    sig.init(this.publicKey);
+    sig.updateString(str);
+    assert(sig.verify(this.fields.signature), 'Invalid signature');
   }
 
-  save(path) {
+  get names() {
+    const names = [];
+    for (let i in this.fields.files) {
+      names.push(this.fields.files[i].name);
+    }
+    return names;
+  }
+
+  readFile(path) {
+    // Check cache.
+    const file = this._files[path];
+
+    return new Promise((resolve, reject) => {
+      if (file) {
+        resolve(file.body);
+        return;
+      }
+
+      this._readFile(path)
+        .then((body) => {
+          const file = this.fields.files.find((f) => (f.name === path));
+          if (!file || file.hash !== SHA256(body).toString()) {
+            reject(new Error('Invalid hash'));
+            return;
+          }
+          this._files[path] ={ body };
+          resolve(body);
+        })
+        .catch(reject);
+    });
+  }
+
+  readFiles() {
+    return new Promise((resolve, reject) => {
+      const promises = [];
+
+      for (let i in this.fields.files) {
+        promises.push(this.readFile(this.fields.files[i].name));
+      }
+
+      Promise.all(promises)
+        .then((bodies) => {
+          const files = [];
+
+          for (let i in this.fields.files) {
+            files.push({
+              name: this.fields.files[i].name,
+              body: bodies[i],
+            })
+          }
+
+          resolve(files);
+        })
+        .catch(reject);
+    });
+  }
+}
+
+class ParsedApplication extends Application {
+  constructor(files, fields) {
+    super(fields);
+    this.files = files;
+  }
+
+  readFile(path) {
+    /* read file from dictionary. */
+    // NOTE: No hash check or caching needed.
+    const file = this.files[path];
+
+    return new Promise((resolve, reject) => {
+      if (!file) {
+        reject(new Error('File not found'));
+        return;
+      }
+      resolve(file.body);
+    })
+  }
+
+  save(outPath) {
     /* Saves a loaded or parsed Application to a zip file. */
-    this.sign();
-  }
+    const manifest = this.sign();
+    const zip = new JSZip();
 
-  toTorrent() {
-    /* Creates a torrent from the application. */
-  }
+    zip.file('app.json', JSON.stringify(manifest));
 
-  // NOTE: used by createServer().
-  static load(path) {
-    /* Loads an application from a zip file. */
-    const app = new Application();
-    app.verify();
+    for (let fn in this.files) {
+      zip.file(fn, this.files[fn].body);
+    }
+
+    if (!outPath) {
+      outPath = pathlib.join(process.cwd(), `${this.fields.name}.app`);
+    }
+
+    return new Promise((resolve, reject) => {
+      zip
+        .generateNodeStream({type: 'nodebuffer', streamFiles: true})
+        .pipe(fs.createWriteStream(outPath))
+        .on('finish', () => {
+          resolve(outPath);
+        })
+        .on('error', (e) => reject(e));
+    });
   }
 
   // NOTE: used by compile().
   static parse(path) {
     /* Parses app.json and load all resources. */
-    const attrs = JSON.parse(fs.readFileSync(path));
-    const app = new Application(
-      attrs.name, attrs.description, attrs.version, attrs.author, attrs.key,
-      attrs.contents, attrs.index);
+    const fields = JSON.parse(fs.readFileSync(path));
+    const basePath = pathlib.dirname(path);
 
-    app._loadFiles();
-    app.sign();
+    fields.key = rs.KEYUTIL.getKey(
+      fs.readFileSync(pathlib.join(basePath, fields.key)).toString());
 
-    return app;
-  }
+    const files = {};
+    fields.files = [];
+    for (let desc of fields.contents) {
+      const pattern = pathlib.join(basePath, desc.pattern);
+      let paths;
 
-  static fromTorrent(torrent) {
-    /* Creates an application from a torrent. */
-    return new TorrentApplication();
-  }
+      if (!isGlob(pattern)) {
+        paths = [pattern];
+      } else {
+        paths = glob().readdirSync(pattern);
+      }
+
+      for (let i in paths) {
+        const path = paths[i];
+        const key = pathlib.relative(basePath, path);
+        const body = fs.readFileSync(path).toString();
+        const hash = SHA256(body).toString();
+
+        files[key] = {
+          body,
+          hash: hash,
+        };
+        fields.files.push({
+          name: key,
+          hash: hash,
+        })
+      }
+    }
+  
+    delete fields.contents;
+
+    return new ParsedApplication(files, fields);
+  }  
 }
 
+class PackageApplication extends Application {
+  constructor(zip, fields) {
+    super(fields);
+    this.zip = zip;
+  }
+
+  _readFile(path) {
+    /* read file from zip. */
+    return new Promise((resolve, reject) => {
+      this.zip.files[path]
+        .async('string')
+        .then((body) => {
+          resolve(body);
+        })
+        .catch(reject);
+    });
+  }
+
+  // NOTE: used by createServer().
+  static load(data) {
+    /* Loads an application from a zip file. */
+    return new Promise((resolve, reject) => {
+      JSZip
+        .loadAsync(data)
+        .then((zip) => {
+          //log('Extracting files.')
+          zip.files['app.json']
+            .async('string')
+            .then((body) => {
+              const fields = JSON.parse(body);
+              const app = new PackageApplication(zip, fields);
+
+              try {
+                app.verify();
+              } catch(e) {
+                reject(e);
+                return
+              }
+
+              resolve(app);
+            })
+            .catch((e) => reject(e));
+          })
+          .catch((e) => reject(e));
+
+    });
+  }
+}
 
 class TorrentApplication extends Application {
-
-}
-
-
-function compile(path) {
-  return Application.parse(path);
-}
-
-
-function sign(obj, pem) {
-  // NOTE: modifies parameter `obj`.
-  const key = rs.KEYUTIL.getKey(pem.toString());
-  const pubKeyJWK = rs.KEYUTIL.getJWKFromKey(key);
-  const pubKey = rs.KEYUTIL.getPEM(rs.KEYUTIL.getKey({
-    e: pubKeyJWK.e,
-    kty: pubKeyJWK.kty,
-    n: pubKeyJWK.n,
-  }));
-
-  // Don't include the private key.
-  obj.key = pubKey;
-
-  const msg = JSON.stringify(obj, Object.keys(obj).sort());
-  const sig = new rs.Signature({alg: 'SHA256withRSA'});
-
-  sig.init(key);
-  sig.updateString(JSON.stringify(obj, Object.keys(obj).sort()));
-  obj.signature = sig.sign();
-}
-
-function verify(obj) {
-  const { key: pem, signature } = obj;
-  const key = rs.KEYUTIL.getKey(pem);
-  const keys = Object.keys(obj);
-
-  // Don't include signature...
-  keys.splice(keys.indexOf('signature'), 1);
-  keys.sort();
-
-  const msg = JSON.stringify(obj, keys);
-  const sig = new rs.Signature({alg: 'SHA256withRSA'});
-
-  sig.init(key);
-  sig.updateString(msg);
-  assert(sig.verify(signature), 'Invalid signature');
-  // Check hashes as files are extracted.
-  //assert.strictEqual(hash, SHA256(payload).toString(), 'Invalid hash');
-}
-
-function _addFiles(basePath, obj, zip) {
-  const fileHashes = [];
-
-  for (let i = 0; i < obj.files.length; i++) {
-    const file = obj.files[i];
-    let paths;
-  
-    if (isGlob(file.path)) {
-      paths = glob().readdirSync(pathlib.join(basePath, file.path));
-    } else {
-      paths = [pathlib.join(basePath, file.path)];
-    }
-
-    for (let ii = 0; ii < paths.length; ii++) {
-      const path = paths[i];
-      const body = fs.readFileSync(path);
-
-      fileHashes.push({
-        path: pathlib.relative(basePath, path),
-        hash: SHA256(body).toString(), 
-      });
-      zip.file(pathlib.relative(basePath, path), body);
-    }
+  constructor(torrent, fields) {
+    super(fields);
+    this.torrent = torrent;
   }
 
-  obj.files = fileHashes;
+  _readFile(path) {
+    /* read file from a torrent. */
+    const file = this.torrent.files.find((f) => (f.name === path));
+
+    return new Promise((resolve, reject) => {
+      if (!file) {
+        reject(new Error(`File not found: ${path}`));
+        return;
+      }
+
+      file.getBuffer((e, buff) => {
+        if (e) {
+          reject(e);
+          return;
+        }
+        resolve(buff.toString());
+      })
+    });
+  }
+
+  static load(torrent) {
+    /* Load application from a torrent. */
+    return new Promise((resolve, reject) => {
+      const file = torrent.files.find((f) => (f.name === 'app.json'));
+
+      if (!file) {
+        reject(new Error('Torrent is not an application, no app.json'));
+        return;
+      }
+
+      file.getBuffer((e, buff) => {
+        if (e) {
+          reject(e);
+          return;
+        }
+
+        const fields = JSON.parse(buff.toString());
+        console.log(fields);
+        const app = new TorrentApplication(torrent, fields);
+
+        try {
+          app.verify();
+        } catch(e) {
+          reject(e);
+          return
+        }
+
+        resolve(app);
+      });
+    });
+  }
 }
 
 function compile(inPath, outPath) {
-  return new Promise((resolve, reject) => {
-    const app = fs.readFileSync(inPath);
-    const basePath = pathlib.dirname(inPath);
-    const obj = JSON.parse(app);
-    const {name, key: keyPath } = obj;
-    const zip = new JSZip();
-    const pem = fs.readFileSync(pathlib.join(basePath, keyPath));
-
-    _addFiles(basePath, obj, zip);
-    zip.file('app.json', JSON.stringify(obj));
-    sign(obj, pem);
-
-    if (!outPath) {
-      outPath = pathlib.join(process.cwd(), `${name}.app`);
-    }
-
-    zip
-      .generateNodeStream({type: 'nodebuffer', streamFiles: true})
-      .pipe(fs.createWriteStream(outPath))
-      .on('finish', () => {
-        resolve(outPath);
-      })  
-  });
+  return ParsedApplication.parse(inPath);
 }
 
-function _checkFiles(obj, zip) {
-  const promises = [];
-
-  for (let i = 0; i < obj.files.length; i++) {
-    const file = obj.files[i];
-    promises.push(zip.files[file.path].async('string'));
-  }
-
-  return new Promise((resolve, reject) => {
-    Promise
-      .all(promises)
-      .then((bodies) => {
-        const files = {};
-
-        try {
-          for (let i = 0; i < obj.files.length; i++) {
-            const file = obj.files[i], body = bodies[i];
-
-            assert.strictEqual(file.hash, SHA256(body).toString(), 'Invalid hash');
-            files[file.path] = body;
-            resolve(files);
-          }
-        } catch (e) {
-          reject(e);
-        }
-      });
-  });
+function extract(inPath) {
+  return PackageApplication.load(fs.readFileSync(inPath));
 }
 
-function extract(file) {
-  if (typeof(file) === 'string') {
-    file = fs.readFileSync(file);
-  }
-
-  return new Promise((resolve, reject) => {
-    JSZip
-    .loadAsync(file)
-    .then((zip) => {
-      //log('Extracting files.')
-      zip.files['app.json']
-        .async('string')
-        .then((content) => {
-          let obj;
-
-          try {
-            obj = JSON.parse(content);
-            verify(obj);
-          } catch (e) {
-            reject(e);
-            return;
-          }
-
-          _checkFiles(obj, zip)
-            .then((files) => {
-              resolve([obj, files]);
-            });
-        });
-    });
-  });
+function torrent(torrent) {
+  return TorrentApplication.load(torrent);
 }
 
 module.exports = {
+  PackageApplication,
+  TorrentApplication,
   compile,
   extract,
-  sign,
-  verify,
+  torrent,
 };

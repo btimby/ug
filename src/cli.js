@@ -14,7 +14,9 @@ function main(args) {
       // outPath will be generated if omitted.
       const outPath = args[2];
 
-      compile(inPath, outPath)
+      const app = compile(inPath, outPath);
+      app
+        .save()
         .then((path) => console.log(`Done, ${path} written.`));
       break;
 

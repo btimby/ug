@@ -26,6 +26,7 @@ function parseQs(qs) {
 }
 
 function parseHtml(body, F) {
+  F = F || Function;
   // Fetch the content.
   var scripts = [];
   var redact = [];
@@ -66,16 +67,21 @@ function render(server, sandbox) {
   const doc = frame[0].contentDocument, win = frame[0].contentWindow;
   let scripts;
 
-  [body, scripts] = parseHtml(app.index, win.Function);
-  // TODO: fix this.
-  document.title = `Web Underground :: view :: ${obj.name}`;
-  doc.write(body);
-
-  // Execute scripts in context of iframe.
-  frame.show();
-  for (var i = 0; i < scripts.length; i++) {
-    scripts[i](doc, win);
-  }
+  app.readFile(app.fields.index)
+    .then((body) => {
+      [body, scripts] = parseHtml(body, win.Function);
+      // TODO: fix this.
+      document.title = `Web Underground :: view :: ${app.fields.name}`;
+      doc.write(body);
+    
+      // Execute scripts in context of iframe.
+      frame.show();
+      for (var i = 0; i < scripts.length; i++) {
+        scripts[i](doc, win);
+      }
+      doc.close();
+    })
+    .catch(console.log);
 }
 
 function viewApp() {

@@ -2,7 +2,7 @@ const WebTorrent = require('webtorrent');
 const LSChunkStore = require('ls-chunk-store');
 const createTorrent = require('create-torrent');
 const parseTorrent = require('parse-torrent');
-const { verify, extract } = require('./index');
+const { TorrentApplication } = require('./index');
 
 
 const TRACKERS = [
@@ -13,7 +13,7 @@ const TRACKERS = [
 ];
 
 
-class PrefixLocalStorage {
+class PrefixedLocalStorage {
   constructor(prefix) {
     this.prefix = prefix;
   }
@@ -55,9 +55,6 @@ class PrefixLocalStorage {
 
 class Server {
   constructor(app, torrent, storage) {
-    this.wt = new WebTorrent({
-      store: LSChunkStore,
-    })
     this.app = app;
     this.torrent = torrent;
     this.storage = storage;
@@ -91,13 +88,16 @@ class Engine {
   constructor() {
     // Servers stored by app.id.
     this.servers = {};
+    this.wt = new WebTorrent({
+      store: LSChunkStore,
+    });
   }
 
-  static _createStorage(app) {
+  _createStorage(app) {
     return new PrefixedLocalStorage(app.id);
   }
 
-  static _getOrCreateTorrent(app) {
+  _getOrCreateTorrent(app) {
     /* Retrieves or creates a torrent for the given app. */
     const opts = {
       name: app.id,
@@ -106,28 +106,39 @@ class Engine {
     };
 
     return new Promise((resolve, reject) => {
-      // Create torrent to retrieve infoHash.
-      createTorrent(app.files, opts, (e, tmp) => {
-        if (e) {
-          reject(e);
-          return;
-        }
-  
-        // Torrent is a uint8Array instance.
-        tmp = parseTorrent(tmp);
-  
-        // Get torrent if it is currently active.
-        let torrent = this.wt.get(tmp.infoHash);
-  
-        if (torrent) {
-          resolve(torrent);
-          return;
-        }
-  
-        this.wt.seed(fileObjs, opts, (torrent) => {
-          resolve(torrent);
+      const fileObjs = [
+        new File([JSON.stringify(app._manifest())], 'app.json'),
+      ];
+
+      app.readFiles()
+        .then((files) => {
+          for (let i in files) {
+            fileObjs.push(new File([files[i].body], files[i].name));
+          }
+
+          // Create torrent to retrieve infoHash.
+          createTorrent(fileObjs, opts, (e, tmp) => {
+            if (e) {
+              reject(e);
+              return;
+            }
+      
+            // Torrent is a uint8Array instance.
+            tmp = parseTorrent(tmp);
+      
+            // Get torrent if it is currently active.
+            let torrent = this.wt.get(tmp.infoHash);
+      
+            if (torrent) {
+              resolve(torrent);
+              return;
+            }
+      
+            this.wt.seed(fileObjs, opts, (torrent) => {
+              resolve(torrent);
+            });
+          });  
         });
-      });  
     });
   }
 
@@ -136,33 +147,38 @@ class Engine {
   }
 
   createServer(app) {
-    if (app.id in this.servers) {
-      return null;
-    }
+    const server = this.servers[app.id];
 
     return new Promise((resolve, reject) => {
-      Engine._getOrCreateTorrent(app)
+      if (server) {
+        resolve(server);
+        return;
+      }
+
+      this._getOrCreateTorrent(app)
         .then((torrent) => {
-          const storage = Engine._createStorage(app);
-          const server = new Server(app, torrent, storage);
-          this.apps[app.id] = server;
-          resolve(server);
-        });
+          const storage = this._createStorage(app);
+          this.servers[app.id] = new Server(app, torrent, storage);
+          resolve(this.servers[app.id]);
+        })
+        .catch(reject);
     });
   }
 
   fetch(id) {
     const server = this.servers[id];
 
-    function _addServer(torrent) {
-      const app = new TorrentApplication(torrent);
-      // NOTE: no storage.
-      server = new Server(app, torrent);
-      this.servers[id] = server;
-      return server;
-    }
-
     return new Promise((resolve, reject) => {
+      const _addServer = (torrent) => {
+        TorrentApplication.load(torrent)
+          .then((app) => {
+            // NOTE: no storage.
+            this.servers[id] = new Server(app, torrent);
+            resolve(this.servers[id]);
+          })
+          .catch(reject);
+      }
+
       if (server) {
         resolve(server);
         return;
@@ -170,12 +186,12 @@ class Engine {
   
       const torrent = this.wt.get(id);
       if (torrent) {
-        resolve(_addServer(torrent));
+        _addServer(torrent);
         return;
       }
 
       this.wt.add(id, opts, (torrent) => {
-          resolve(_addServer(torrent));
+          _addServer(torrent);
       });
     });
   }

@@ -8,7 +8,7 @@
 
     "contents": [
         {
-            "path": "index.html"
+            "pattern": "index.html"
         }
     ]
 }

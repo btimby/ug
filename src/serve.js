@@ -1,6 +1,6 @@
 const $ = require('cash-dom');
 const JSZip = require('jszip');
-const { extract } = require('./index');
+const { PackageApplication } = require('./index');
 
 
 const LOG_LEVEL = {
@@ -71,6 +71,7 @@ function setup(server) {
     .text(url);
 
   log('Seeding, infoHash: {0}', server.torrent.infoHash);
+  log('Exposing files: {0}', server.app.names);
 
   server.torrent.on('warning', log);
   server.torrent.on('error', log);
@@ -101,12 +102,17 @@ function load() {
   $('#log').empty();
   log('Loading {1} byte application from {0}.', file.name, file.size);
 
-  Application
-    .load(file)
-    .then((app) => {
-      window.createServer(app)
-        .then((server) => setup(server));
-    });
+  file
+    .arrayBuffer()
+    .then((data) => {
+      PackageApplication
+        .load(data)
+        .then((app) => {
+          window.createServer(app)
+            .then(setup)
+            .catch(console.log);
+        });
+      });
 }
 
 function stop() {

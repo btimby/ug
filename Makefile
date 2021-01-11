@@ -36,6 +36,10 @@ test-browser: dist
 test-node:
 	npm run test-node
 
+.PHONY: debug-node
+debug-node:
+	npm run debug-node
+
 .PHONY: test-all
 test-all: test-browser test-node
 

@@ -6,6 +6,7 @@
   "scripts": {
     "test-browser": "karma start --single-run --browsers ChromeHeadless,FirefoxHeadless karma.config.js",
     "test-node": "mocha --recursive --full-trace tests/node/**/test_*.js",
+    "debug-node": "mocha inspect --recursive --full-trace tests/node/**/test_*.js",
     "vendor": "for file in webextension-polyfill/dist/browser-polyfill.min.js; do cp node_modules/${file} dist/js/vendor/$(basename ${file}); done",
     "dist": "globify 'src/*.js' -u src/cli.js -o dist/js",
     "watch": "globify 'src/*.js' -u src/cli.js -w -v -o dist/js"
