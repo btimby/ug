@@ -10,6 +10,8 @@ const LOG_LEVEL = {
   ERROR: 4,
 };
 
+let RUNNING_APP = null;
+
 
 function tail() {
   if ($('#tail').prop('checked')) {
@@ -63,32 +65,41 @@ function log() {
 }
 
 function setup(server) {
-  const url = `web+ug://${server.torrent.infoHash}`;
-  console.log(`Setting up logging for ${server.app.id}`);
+  let maxSpeed = 0;
+  const {app, torrent} = server;
+  const url = `web+ug://${torrent.infoHash}`;
+
+  console.log(`Setting up logging for ${app.id}`);
   $('#link')
     .attr('href', url)
     .text(url);
 
-  log('Seeding, infoHash: {0}', server.torrent.infoHash);
-  log('Exposing files: {0}', server.app.names);
+  log('Seeding, infoHash: {0}', torrent.infoHash);
+  log('Exposing files: {0}', app.names);
 
-  server.torrent.on('warning', log);
-  server.torrent.on('error', log);
+  $('#name').text(app.fields.name);
+  $('#version').text(app.fields.version);
+  $('#author').text(app.fields.author);
+  $('#desc').text(app.fields.description);
 
-  server.torrent.on('wire', (peer, addr) => {
+  torrent.on('warning', log);
+  torrent.on('error', log);
+
+  torrent.on('wire', (peer, addr) => {
     log('Peer {0} connected', addr);
   });
-  server.torrent.on('upload', (bytes) => {
+  torrent.on('upload', (bytes) => {
     log('Sent {0} bytes', bytes);
   });
 
   setInterval(() => {
-    $('#peers').text(server.torrent.numPeers);
-    $('#bytes').text(server.torrent.uploaded);
-    $('#speed').text(server.torrent.uploadSpeed);
-  }, 1000);
+    $('#peers').text(torrent.numPeers);
+    $('#bytes').text(torrent.uploaded);
+    $('#speed').text(torrent.uploadSpeed);
 
-  $('#runtime').show();
+    maxSpeed = Math.max(maxSpeed, torrent.uploadSpeed);
+    $('#max').text(maxSpeed);
+  }, 1000);
 }
 
 function load() {
@@ -102,23 +113,47 @@ function load() {
   $('#runtime').show();
   log('Loading {1} byte application from {0}.', file.name, file.size);
 
-  window
+  window.engine
     .createServer(file)
-    .then(setup)
+    .then((server) => {
+      RUNNING_APP = server.app;
+      setup(server);
+    })
     .catch(log);
 }
 
 function stop() {
-  $('#app').val(null);
-  $('#runtime').hide();
-}
-
-function remove() {
-  if (!confirm('Forget about this application?')) {
+  if (!RUNNING_APP) {
     return;
   }
 
-  stop();
+  window.engine
+    .remove(RUNNING_APP.id)
+    .then(() => {
+      RUNNING_APP = null;
+      $('#app').val(null);
+      $('#runtime').hide();
+    })
+    .catch(log);
+}
+
+function remove() {
+  if (!RUNNING_APP) {
+    return;
+  }
+
+  if (!confirm('Remove data permanently?')) {
+    return;
+  }
+
+  window.engine
+    .flush(RUNNING_APP.id)
+    .then(() => {
+      RUNNING_APP = null;
+      $('#app').val(null);
+      $('#runtime').hide();
+    })
+    .catch(log);
 }
 
 $('#app').on('change', load);

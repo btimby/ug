@@ -67,18 +67,22 @@ class Server {
         return;
       }
 
-      this.torrent.destroy(resolve);
+      this.torrent.destroy(() => {
+        resolve();
+      });
     });
   }
 
   flush() {
     return new Promise((resolve, reject) => {
-      this.destroy.then(() => {
-        if (this.storage) {
-          this.storage.clear();
-        }
-        resolve();
-      });
+      this
+        .destroy()
+        .then(() => {
+          if (this.storage) {
+            this.storage.clear();
+          }
+          resolve();
+        });
     });
   }
 }
@@ -126,16 +130,37 @@ class Engine {
             // Torrent is a uint8Array instance.
             tmp = parseTorrent(tmp);
       
+            let torrent;
+
             // Get torrent if it is currently active.
-            let torrent = this.wt.get(tmp.infoHash);
-      
+            torrent = this.wt.get(tmp.infoHash);
             if (torrent) {
               resolve(torrent);
               return;
             }
-      
-            this.wt.seed(fileObjs, opts, (torrent) => {
-              resolve(torrent);
+
+            const _seed = () => {
+              this.wt.seed(fileObjs, opts, (torrent) => {
+                resolve(torrent);
+              });  
+            };
+
+            // Attempt to join swarm.
+            try {
+              torrent = this.wt.add(tmp.infoHash, opts, (torrent) => {
+                resolve(torrent);
+              });
+            } catch (e) {
+              console.log(e);
+              // Error, seed it.
+              _seed();
+            }
+
+            // If an error occurs, seed the torrent.
+            torrent.on('error', (e) => {
+              console.log(e);
+              // Error, seed it.
+              _seed();
             });
           });  
         });
@@ -195,40 +220,48 @@ class Engine {
         return;
       }
 
+      const opts = {
+        announce: TRACKERS,
+      };
+
       this.wt.add(id, opts, (torrent) => {
-          _addServer(torrent);
+        _addServer(torrent);
       });
     });
   }
 
   remove(id) {
-    const server = this.servers[id];
-
     return new Promise((resolve, reject) => {
+      const server = this.servers[id];
+
       if (!server) {
-        resolve();
+        reject(new Error(`Invalid app.id ${id}`));
         return;
       }
 
-      server.destroy(() => {
-        delete this.servers[id];
-        resolve();
+      server
+        .destroy()
+        .then(() => {
+          delete this.servers[id];
+          resolve();
+        })
+        .catch(reject);
       });
-    });
   }
 
   flush(id) {
-    const server = this.servers[id];
-
     return new Promise((resolve, reject) => {
+      const server = this.servers[id];
+
       if (!server) {
-        resolve();
+        reject(new Error(`Invalid app.id ${id}`));
         return;
       }
 
       server
         .flush()
-        .then(resolve);
+        .then(resolve)
+        .catch(reject);
     });
   }
 

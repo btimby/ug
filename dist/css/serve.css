@@ -17,10 +17,6 @@
 #log p.level-3 { color: yellow; }
 #log p.level-4 { color: red; }
 
-div.link {
-    margin: 20px 0 20px;
-}
-
 table {
     margin-bottom: 20px;
 }

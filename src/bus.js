@@ -17,22 +17,24 @@ function _doPromise(name, ...args) {
   });
 }
 
-window.createServer = function createServer(file) {
-  return _doPromise('createServer', file);
-};
+window.engine = {
+  createServer(file) {
+    return _doPromise('createServer', file);
+  },
 
-window.remove = function remove(id) {
-  return _doPromise('remove', id);
-};
+  fetch(file) {
+    return _doPromise('fetch', file);
+  },
 
-window.flushServer = function flushServer(id) {
-  return _doPromise('flush', id);
-};
+  remove(id) {
+    return _doPromise('remove', id);
+  },
 
-window.fetch = function fetch(id) {
-  return _doPromise('fetch', id);
-};
+  flush(id) {
+    return _doPromise('flush', id);
+  },
 
-window.stats = function stats(id) {
-  return _doPromise('stats', id);
+  stats() {
+    return _doPromise('stats', id);
+  },
 };
