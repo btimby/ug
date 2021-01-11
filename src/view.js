@@ -92,7 +92,7 @@ function viewApp() {
     url = url.substring(9);
   }
 
-  window
+  window.engine
     .fetch(url)
     .then((server) => {
       render(server, true);
