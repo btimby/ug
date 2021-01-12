@@ -1,4 +1,5 @@
 const $ = require('cash-dom');
+const debug = require('debug')('ug:view');
 
 
 const RE_SCRIPT = /<script[^>]*>(.*?)<\/script>/gis;
@@ -25,11 +26,14 @@ function parseQs(qs) {
   return obj;
 }
 
+
+
 function parseHtml(body, F) {
-  F = F || Function;
   // Fetch the content.
   var scripts = [];
   var redact = [];
+
+  F = F || Function;
 
   let tag;
   while ((tag = RE_SCRIPT.exec(body))) {
@@ -81,7 +85,7 @@ function render(server, sandbox) {
       }
       doc.close();
     })
-    .catch(console.log);
+    .catch(debug);
 }
 
 function viewApp() {
@@ -92,7 +96,7 @@ function viewApp() {
     url = url.substring(9);
   }
 
-  window.engine
+  window.bus
     .fetch(url)
     .then((server) => {
       render(server, true);

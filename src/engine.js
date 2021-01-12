@@ -2,6 +2,7 @@ const WebTorrent = require('webtorrent');
 const LSChunkStore = require('ls-chunk-store');
 const createTorrent = require('create-torrent');
 const parseTorrent = require('parse-torrent');
+const debug = require('debug')('ug:engine');
 const { TorrentApplication, PackageApplication } = require('./index');
 
 
@@ -22,10 +23,6 @@ class PrefixedLocalStorage {
     return `${this.prefix}-${key}`;
   }
 
-  _key(i) {
-    return localStorage.key(i);
-  }
-
   setItem(key, value) {
     localStorage.setItem(this._makeKey(key), value);
   }
@@ -42,8 +39,10 @@ class PrefixedLocalStorage {
     let toRemove = [];
 
     for (let i = 0; i < localStorage.length; i++) {
-      if (localStorage._key(i).startsWith(this.prefix)) {
-        toRemove.push(localStorage.key(i));
+      const key = localStorage.key(i);
+
+      if (key.startsWith(this.prefix)) {
+        toRemove.push(key);
       }
     }
 
@@ -55,6 +54,7 @@ class PrefixedLocalStorage {
 
 class Server {
   constructor(app, torrent, storage) {
+    this.id = (torrent && torrent.infoHash);
     this.app = app;
     this.torrent = torrent;
     this.storage = storage;
@@ -90,30 +90,93 @@ class Server {
 
 class Engine {
   constructor() {
-    // Servers stored by app.id.
+    // Servers stored by torrent infoHash.
     this.servers = {};
     this.wt = new WebTorrent({
       store: LSChunkStore,
+    })
+    .on('torrent', this._collectStats.bind(this));
+    this._stats = {
+      // NOTE: null key holds aggregate stats.
+      null: {
+        // NOTE: initial values, so stats always exist.
+        uploaded: 0,
+        uploadSpeed: 0,
+        maxUploadSpeed: 0,
+        downloaded: 0,
+        downloadSpeed: 0,
+        maxDownloadSpeed: 0,
+        },
+    };
+  }
+
+  _collectStats(torrent) {
+    // Hook up event listeners to maintain per-torrent and global stats.
+    const stats = this._stats[torrent.infoHash] = {
+      // NOTE: stat(s) that don't change.
+      length: torrent.length,
+      id: torrent.infoHash,
+
+      // NOTE: initial values, so stats always exist.
+      isSeeding: false,
+      isServing: false,
+      uploaded: 0,
+      uploadSpeed: 0,
+      maxUploadSpeed: 0,
+      downloaded: 0,
+      downloadSpeed: 0,
+      maxDownloadSpeed: 0,
+      ratio: 0,
+      numPeers: 0,
+    };
+
+    torrent.on('error', () => {
+      delete this._stats[torrent.infoHash];
+    });
+
+    // NOTE: stats that change frequently.
+    torrent.on('upload', (bytes) => {
+      const gStats = this._stats[null];
+      gStats.uploadSpeed = this.wt.uploadSpeed;
+      gStats.maxUploadSpeed = Math.max(gStats.maxUploadSpeed, this.wt.uploadSpeed);
+
+      stats.uploaded = torrent.uploaded;
+      stats.uploadSpeed = torrent.uploadSpeed;
+      stats.maxUploadSpeed = Math.max(stats.maxUploadSpeed, torrent.uploadSpeed);
+    });
+
+    // NOTE: stats that change frequently.
+    torrent.on('download', (bytes) => {
+      const gStats = this._stats[null];
+      gStats.downloadSpeed = this.wt.downloadSpeed;
+      gStats.maxDownloadSpeed = Math.max(gStats.maxDownloadSpeed, this.wt.downloadSpeed);
+
+      stats.downloaded = torrent.downloaded;
+      stats.downloadSpeed = torrent.downloadSpeed;
+      stats.maxDownloadSpeed = Math.max(stats.maxDownloadSpeed, torrent.downloadSpeed);
+    });
+
+    torrent.on('wire', () => {
+      stats.numPeers = torrent.numPeers;
     });
   }
 
-  _createStorage(app) {
-    return new PrefixedLocalStorage(app.id);
+  _createStorage(id) {
+    return new PrefixedLocalStorage(id);
   }
 
   _getOrCreateTorrent(app) {
     /* Retrieves or creates a torrent for the given app. */
-    const opts = {
-      name: app.id,
-      announce: TRACKERS,
-      comment: app.description,
-    };
-
     return new Promise((resolve, reject) => {
       const fileObjs = [
         new File([JSON.stringify(app._manifest())], 'app.json'),
       ];
-
+      const opts = {
+        name: `${app.fields.name}-${app.fields.version}`,
+        announce: TRACKERS,
+        comment: app.description,
+      };
+  
       app.readFiles()
         .then((files) => {
           for (let i in files) {
@@ -127,13 +190,10 @@ class Engine {
               return;
             }
       
-            // Torrent is a uint8Array instance.
-            tmp = parseTorrent(tmp);
-      
             let torrent;
-
             // Get torrent if it is currently active.
-            torrent = this.wt.get(tmp.infoHash);
+            // tmp is a uint8Array instance.
+            torrent = this.wt.get(tmp);
             if (torrent) {
               resolve(torrent);
               return;
@@ -151,14 +211,14 @@ class Engine {
                 resolve(torrent);
               });
             } catch (e) {
-              console.log(e);
+              debug('Error adding torrent, seeding: %O', e);
               // Error, seed it.
               _seed();
             }
 
             // If an error occurs, seed the torrent.
             torrent.on('error', (e) => {
-              console.log(e);
+              debug('Error adding torrent, seeding: %O', e);
               // Error, seed it.
               _seed();
             });
@@ -171,23 +231,21 @@ class Engine {
     return this.servers[id];
   }
 
+  _add(server) {
+    this.servers[server.id] = server;
+    return server;
+  }
+
   createServer(file) {
     return new Promise((resolve, reject) => {
       PackageApplication
         .load(file)
         .then((app) => {
-          const server = this.servers[app.id];
-
-          if (server) {
-            resolve(server);
-            return;
-          }
-    
           this._getOrCreateTorrent(app)
             .then((torrent) => {
-              const storage = this._createStorage(app);
-              this.servers[app.id] = new Server(app, torrent, storage);
-              resolve(this.servers[app.id]);
+              // NOTE: torrent.infoHash === server.id.
+              const storage = this._createStorage(torrent.infoHash);
+              resolve(this._add(new Server(app, torrent, storage)));
             })
             .catch(reject);
         })
@@ -196,19 +254,17 @@ class Engine {
   }
 
   fetch(id) {
-    const server = this.servers[id];
-
     return new Promise((resolve, reject) => {
       const _addServer = (torrent) => {
         TorrentApplication.load(torrent)
           .then((app) => {
             // NOTE: no storage.
-            this.servers[id] = new Server(app, torrent);
-            resolve(this.servers[id]);
+            resolve(this._add(new Server(app, torrent)));
           })
           .catch(reject);
       }
 
+      const server = this.get(id);
       if (server) {
         resolve(server);
         return;
@@ -232,10 +288,10 @@ class Engine {
 
   remove(id) {
     return new Promise((resolve, reject) => {
-      const server = this.servers[id];
+      const server = this.get(id);
 
       if (!server) {
-        reject(new Error(`Invalid app.id ${id}`));
+        reject(new Error(`Invalid server.id ${id}`));
         return;
       }
 
@@ -251,10 +307,10 @@ class Engine {
 
   flush(id) {
     return new Promise((resolve, reject) => {
-      const server = this.servers[id];
+      const server = this.get(id);
 
       if (!server) {
-        reject(new Error(`Invalid app.id ${id}`));
+        reject(new Error(`Invalid server.id ${id}`));
         return;
       }
 
@@ -266,22 +322,49 @@ class Engine {
   }
 
   stats() {
-    const stats = {};
-
-    for (let server in self.servers) {
-      stats.push({
-        id: server.app.id,
-      });
-    }
-
     return new Promise((resolve, reject) => {
-      resolve(stats);
+      const gStats = this._stats[null];
+      const keys = Object.keys(this._stats);
+
+      // NOTE: stats that are sums.
+      gStats.length = keys.reduce((prev, curr) => {
+        return (curr === null) ? prev : prev + this._stats[curr].length || 0;
+      }, 0);
+      gStats.uploaded = keys.reduce((prev, curr) => {
+        return (curr === null) ? prev : prev + this._stats[curr].uploaded || 0;
+      }, 0);
+      gStats.downloaded = keys.reduce((prev, curr) => {
+        return (curr === null) ? prev : prev + this._stats[curr].downloaded || 0;
+      }, 0);
+      gStats.numPeers = keys.reduce((prev, curr) => {
+        return (curr === null) ? prev : prev + this._stats[curr].numPeers || 0;
+      }, 0);
+
+      // NOTE: stats that are immediate (like gauges.)
+      gStats.ratio = this.wt.ratio;
+
+      for (let i = 0; i < this.wt.torrents.length; i++) {
+        const torrent = this.wt.torrents[i];
+        const stats = this._stats[torrent.infoHash];
+
+        const server = this.get(torrent.infoHash);
+        if (server) {
+          stats.isSeeding = (server.app.isSeeding);
+          stats.isServing = (server.app.isServing);
+          stats.name = server.app.fields.name;
+        }
+  
+        stats.ratio = torrent.ratio;
+        stats.progress = torrent.progress;
+      }
+
+      resolve(this._stats);
     });
   }
 }
 
 function _start() {
-  console.log('Engine, starting');
+  debug('Engine, starting');
   window.engine = new Engine();
 
   // TODO: load past applications from localStorage and serve them.
@@ -292,12 +375,12 @@ if (window) {
   // This does not currently work, see:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=64100&q=registerprotocolhandler%20extension&can=2
   const url = chrome.runtime.getURL('/dist/html/view.html?url=%s');
-  console.log(url);
+  debug('URL for protocol handler: %s', url);
   try {
     navigator.registerProtocolHandler(
       'web+ug', url, 'Web Underground scheme');
   } catch (e) {
-    console.log('Error installing protocol handler', e);    
+    debug('Error installing protocol handler', e);    
   }
 
   _start();

@@ -1,6 +1,6 @@
 input {
     vertical-align: middle;
-    margin: 5px 10px 5px 0;
+    margin: 5px 10px 5px;
     padding: 10px;
     background-color: #fff;
     border: 1px solid #ddd;
@@ -11,6 +11,12 @@ button {
     background-color: dodgerblue;
     border: 1px solid #ddd;
     color: white;
+}
+
+select {
+    vertical-align: middle;
+    padding: 5px 20px;
+    margin: 5px 5px 5px;
 }
 
 table {

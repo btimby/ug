@@ -6,9 +6,13 @@ const SHA256 = require('crypto-js/sha256');
 const rs = require('jsrsasign');
 const glob = require('glob-fs');
 const isGlob = require('is-glob');
+const debug = require('debug')('ug:index');
 
 
 class Application {
+  isSeeding = false;
+  isServing = false;
+
   /* Represents an application. */
   constructor(fields) {
     this.fields = fields;
@@ -232,6 +236,9 @@ class ParsedApplication extends Application {
 }
 
 class PackageApplication extends Application {
+  isSeeding = true;
+  isServing = true;
+
   constructor(zip, fields) {
     super(fields);
     this.zip = zip;
@@ -281,6 +288,9 @@ class PackageApplication extends Application {
 }
 
 class TorrentApplication extends Application {
+  isSeeding = true;
+  isServing = false;
+
   constructor(torrent, fields) {
     super(fields);
     this.torrent = torrent;
@@ -323,7 +333,7 @@ class TorrentApplication extends Application {
         }
 
         const fields = JSON.parse(buff.toString());
-        console.log(fields);
+        debug('%O', fields);
         const app = new TorrentApplication(torrent, fields);
 
         try {

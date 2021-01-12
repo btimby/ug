@@ -1,5 +1,6 @@
 const $ = require('cash-dom');
 const JSZip = require('jszip');
+const debug = require('debug')('ug:serve');
 
 
 const LOG_LEVEL = {
@@ -10,7 +11,7 @@ const LOG_LEVEL = {
   ERROR: 4,
 };
 
-let RUNNING_APP = null;
+let RUNNING_SERVER = null;
 
 
 function tail() {
@@ -27,7 +28,7 @@ function log() {
   let lvl, msg, start;
 
   if (typeof(arguments[0]) === 'integer') {
-    // Log level provided, followed by msg, start at third arguments below.
+    // Log level provided, followed by msg, start at third argument below.
     [lvl, msg] = arguments;
     start = 2;
   } else {
@@ -57,24 +58,34 @@ function log() {
   const time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
   var ts = `${date} ${time}`;
 
-  const p = $('<p>')
-    .text(`[${ts}] ${msg}`)
+  const divTag = $('<div>')
+    .text(msg)
     .attr('class', `level-${lvl}`)
     .appendTo($('#log'));
+
+  const tsTag = $('<p>')
+    .text(ts)
+    .attr({
+      class: `timeago level-${lvl}`,
+      datetime: ts
+    })
+    .prependTo(divTag);
+
   tail();  
 }
 
 function setup(server) {
   let maxSpeed = 0;
   const {app, torrent} = server;
-  const url = `web+ug://${torrent.infoHash}`;
+  const url = `web+ug://${server.id}`;
+  RUNNING_SERVER = server;
 
-  console.log(`Setting up logging for ${app.id}`);
+  debug('Setting up logging for %s', server.id);
   $('#link')
     .attr('href', url)
     .text(url);
 
-  log('Seeding, infoHash: {0}', torrent.infoHash);
+  log('Seeding, infoHash: {0}', server.id);
   log('Exposing files: {0}', app.names);
 
   $('#name').text(app.fields.name);
@@ -93,13 +104,85 @@ function setup(server) {
   });
 
   setInterval(() => {
-    $('#peers').text(torrent.numPeers);
-    $('#bytes').text(torrent.uploaded);
-    $('#speed').text(torrent.uploadSpeed);
+    window.bus
+      .stats()
+      .then((stats) => {
+        // Handle drop-down list.
+        const serving = $('<optgroup label="Serving"/>');
+        const seeding = $('<optgroup label="Seeding"/>');
+  
+        for (let st in stats) {
+          const opt = $(`<option value=${st.id}">${st.name}</option>`);
+  
+          if (st.isServing) {
+            opt.appendTo(serving);
+          } else {
+            opt.appendTo(seeding);
+          }
+        }
+  
+        if (serving.children().length || seeding.children().length) {
+          $('#servers')
+            .empty();
+        }
 
-    maxSpeed = Math.max(maxSpeed, torrent.uploadSpeed);
-    $('#max').text(maxSpeed);
+        if (serving.children().length) {
+          $('#servers')
+            .append(serving)
+            .show();
+        }
+  
+        if (seeding.children().length) {
+          $('#servers')
+            .append(seeding)
+            .show();
+        }
+
+        // Torrent specific stats.
+        stats = stats[torrent.infoHash];
+        $('#peers').text(stats.numPeers);
+        $('#upbytes').text(stats.uploaded);
+        $('#upspeed').text(stats.uploadSpeed);
+        $('#upmax').text(stats.maxUploadSpeed);
+        $('#downbytes').text(stats.downloaded);
+        $('#downspeed').text(stats.downloadSpeed);
+        $('#downmax').text(stats.maxDownloadSpeed);
+      });
   }, 1000);
+}
+
+function stop() {
+  if (!RUNNING_SERVER) {
+    return;
+  }
+
+  window.bus
+    .remove(RUNNING_SERVER.id)
+    .then(() => {
+      RUNNING_SERVER = null;
+      $('#app').val(null);
+      $('#runtime').hide();
+    })
+    .catch(log);
+}
+
+function remove() {
+  if (!RUNNING_SERVER) {
+    return;
+  }
+
+  if (!confirm('Remove data permanently?')) {
+    return;
+  }
+
+  window.bus
+    .flush(RUNNING_SERVER.id)
+    .then(() => {
+      RUNNING_SERVER = null;
+      $('#app').val(null);
+      $('#runtime').hide();
+    })
+    .catch(log);
 }
 
 function load() {
@@ -113,45 +196,10 @@ function load() {
   $('#runtime').show();
   log('Loading {1} byte application from {0}.', file.name, file.size);
 
-  window.engine
+  window.bus
     .createServer(file)
     .then((server) => {
-      RUNNING_APP = server.app;
       setup(server);
-    })
-    .catch(log);
-}
-
-function stop() {
-  if (!RUNNING_APP) {
-    return;
-  }
-
-  window.engine
-    .remove(RUNNING_APP.id)
-    .then(() => {
-      RUNNING_APP = null;
-      $('#app').val(null);
-      $('#runtime').hide();
-    })
-    .catch(log);
-}
-
-function remove() {
-  if (!RUNNING_APP) {
-    return;
-  }
-
-  if (!confirm('Remove data permanently?')) {
-    return;
-  }
-
-  window.engine
-    .flush(RUNNING_APP.id)
-    .then(() => {
-      RUNNING_APP = null;
-      $('#app').val(null);
-      $('#runtime').hide();
     })
     .catch(log);
 }

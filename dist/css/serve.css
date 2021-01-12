@@ -5,17 +5,22 @@
     overflow: auto;
 }
 
-#log p {
+#log p, div {
     white-space: pre;
     font-family: monospace;
     margin: 0;
     padding: 0;
 }
 
-#log p.level-1 { color: blue; }
-#log p.level-2 { color: black; }
-#log p.level-3 { color: yellow; }
-#log p.level-4 { color: red; }
+#log p {
+    float: left;
+    margin-right: 10px;
+}
+
+#log .level-1 { color: blue; }
+#log .level-2 { color: black; }
+#log .level-3 { color: yellow; }
+#log .level-4 { color: red; }
 
 table {
     margin-bottom: 20px;
@@ -23,4 +28,8 @@ table {
 
 #remove {
     background-color: red;
+}
+
+#servers {
+    display: none;
 }

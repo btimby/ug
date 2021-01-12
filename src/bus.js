@@ -17,7 +17,7 @@ function _doPromise(name, ...args) {
   });
 }
 
-window.engine = {
+window.bus = {
   createServer(file) {
     return _doPromise('createServer', file);
   },
@@ -35,6 +35,6 @@ window.engine = {
   },
 
   stats() {
-    return _doPromise('stats', id);
+    return _doPromise('stats');
   },
 };

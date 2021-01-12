@@ -9,8 +9,7 @@
         <input id="app" type='file' placeholder="bundle"/>
         <button id="stop" title="Stop seeding for now">Stop</button>
         <button id="remove" title="Remove from storage">Remove</button>
-
-        <div id="runtime" style="display: none">
+        <div id="runtime" style="display: none"><select id="servers"></select>
             <table>
                 <tbody>
                     <tr>
@@ -40,25 +39,31 @@
                     <tr>
                         <th>Peers</th>
                         <th>Uploaded</th>
-                        <th>Speed</th>
-                        <th>Max</th>
+                        <th>Up Speed (bps)</th>
+                        <th>Up Max (bps)</th>
+                        <th>Downloaded</th>
+                        <th>Down Speed (bps)</th>
+                        <th>Down Max (bps)</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td><span id="peers">0</span></td>
-                        <td><span id="bytes">0</span></td>
-                        <td><span id="speed">0</span></td>
-                        <td><span id="max">0</span></td>
+                        <td><span id="upbytes">0</span></td>
+                        <td><span id="upspeed">0</span></td>
+                        <td><span id="upmax">0</span></td>
+                        <td><span id="downbytes">0</span></td>
+                        <td><span id="downspeed">0</span></td>
+                        <td><span id="downmax">0</span></td>
                     </tr>
                 </tbody>
             </table>
-            <div id="log"></div>
-            <input type="checkbox" id="tail" value="true"/> Tail
+            <div id="log"></div><input type="checkbox" id="tail" value="true" checked/> Tail
         </div>
     </body>
 
     <!-- Included here to avoid loading during tests // -->
+    <script type="text/javascript" src="https://unpkg.com/timeago.js@4.0.2/dist/timeago.min.js"></script>
     <script type="text/javascript" src="/dist/js/vendor/browser-polyfill.min.js"></script>
     <script type="text/javascript" src="/dist/js/bus.js"></script>
     <script type="text/javascript" src="/dist/js/serve.js"></script>

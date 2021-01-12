@@ -1,10 +1,11 @@
 const $ = require('cash-dom');
+const debug = require('debug')('ug:popup');
 
 
 function openView() {
     var hash = $('#url').val();
 
-    console.log(`Opening UG tab: ${hash}`);
+    debug('Opening UG tab: %s', hash);
     browser.tabs.create({
       'url': `/dist/html/view.html?url=${hash}`,
     });
@@ -14,7 +15,7 @@ function openView() {
 }
 
 function openServe() {
-    console.log('Opening serve page');
+    debug('Opening serve page');
     browser.tabs.create({
         'url': '/dist/html/serve.html',
     });
