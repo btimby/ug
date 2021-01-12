@@ -9,6 +9,9 @@ const isGlob = require('is-glob');
 const debug = require('debug')('ug:index');
 
 
+const RE_INDEX = /index.html?/gi;
+
+
 class Application {
   isSeeding = false;
   isServing = false;
@@ -202,6 +205,7 @@ class ParsedApplication extends Application {
 
     const files = {};
     fields.files = [];
+
     for (let desc of fields.contents) {
       const pattern = pathlib.join(basePath, desc.pattern);
       let paths;
@@ -230,6 +234,25 @@ class ParsedApplication extends Application {
     }
   
     delete fields.contents;
+
+    if (!fields.index) {
+      // User may omit index field as long as there is a file named "index.html".
+      for (let fn in files) {
+        const m = fn.match(RE_INDEX);
+        if (m) {
+          fields.index = fn;
+          break;
+        }
+      }
+    } else {
+      if (!files[fields.index]) {
+        throw new Error(`The index field is defined as ${fields.index}, yet no such file is included.`);
+      }
+    }
+
+    if (!fields.index) {
+      throw new Error('Must define an index page or bundle index.html');
+    }
 
     return new ParsedApplication(files, fields);
   }  

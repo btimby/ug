@@ -4,7 +4,6 @@
     "version": "1.0.0",
     "author": "Ben Timby <btimby@gmail.com>",
     "key": "app.pem",
-    "index": "index.html",
 
     "contents": [
         {
