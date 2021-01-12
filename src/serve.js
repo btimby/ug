@@ -75,7 +75,6 @@ function log() {
 }
 
 function setup(server) {
-  let maxSpeed = 0;
   const {app, torrent} = server;
   const url = `web+ug://${server.id}`;
   RUNNING_SERVER = server;
@@ -204,11 +203,16 @@ function load() {
     .catch(log);
 }
 
-$('#app').on('change', load);
-$('#stop').on('click', stop);
-$('#remove').on('click', remove);
-$('#tail').on('click', tail);
-
-if (window) {
-  load();
+if (document) {
+  $(document).ready(() => {
+    $('#app').on('change', load);
+    $('#stop').on('click', stop);
+    $('#remove').on('click', remove);
+    $('#tail').on('click', tail);
+    $('#clear').on('click', () => {
+      $('#log').empty();
+    });
+    
+    load();
+  });
 }

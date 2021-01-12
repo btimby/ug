@@ -104,8 +104,10 @@ function viewApp() {
 }
 
 // Only run when loaded as extension.
-if ('browser' in window) {
-  viewApp();
+if (document && 'browser' in window) {
+  $(document).ready(() => {
+    viewApp();
+  });
 }
 
 

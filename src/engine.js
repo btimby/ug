@@ -371,17 +371,19 @@ function _start() {
 }
 
 // Only run in browser.
-if (window) {
-  // This does not currently work, see:
-  // https://bugs.chromium.org/p/chromium/issues/detail?id=64100&q=registerprotocolhandler%20extension&can=2
-  const url = chrome.runtime.getURL('/dist/html/view.html?url=%s');
-  debug('URL for protocol handler: %s', url);
-  try {
-    navigator.registerProtocolHandler(
-      'web+ug', url, 'Web Underground scheme');
-  } catch (e) {
-    debug('Error installing protocol handler', e);    
-  }
+if (document) {
+  $(document).ready(() => {
+    // This does not currently work, see:
+    // https://bugs.chromium.org/p/chromium/issues/detail?id=64100&q=registerprotocolhandler%20extension&can=2
+    const url = chrome.runtime.getURL('/dist/html/view.html?url=%s');
+    debug('URL for protocol handler: %s', url);
+    try {
+      navigator.registerProtocolHandler(
+        'web+ug', url, 'Web Underground scheme');
+    } catch (e) {
+      debug('Error installing protocol handler', e);    
+    }
 
-  _start();
+    _start();
+  });
 }
