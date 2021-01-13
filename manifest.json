@@ -1,32 +1,28 @@
 {
-    "manifest_version": 2,
-    "name": "UG",
-    "version": "1.0",
-    "description": "Web Underground distributed P2P website hosting platform.",
-    "icons": {
-      "32": "/dist/icons/ug-32.png",
-      "48": "/dist/icons/ug-48.png",
-      "96": "/dist/icons/ug-96.png",
-      "128": "/dist/icons/ug-128.png"
-    },
-  
-    "background": {
-      "page": "/dist/html/engine.html"
-    },
-
-    "browser_action": {
-      "default_icon": "/dist/icons/ug-48.png",
-      "default_title": "UG - Open site",
-      "default_popup": "/dist/html/popup.html"
-    },
-
-    "protocol_handlers": [
-      {
-        "protocol": "web+ug",
-        "name": "Web Underground",
-        "uriTemplate": "/dist/html/view.html?url=%s"
-      }
-    ],
-
-    "content_security_policy": "script-src 'self' 'unsafe-eval' https://cdnjs.com https://unpkg.com https://code.jquery.com https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com https://ajax.googleapis.com; object-src 'self';"
-  }
+  "manifest_version": 2,
+  "name": "UG",
+  "version": "1.0.0",
+  "description": "Web Underground distributed P2P website hosting platform.",
+  "icons": {
+    "32": "/dist/icons/ug-32.png",
+    "48": "/dist/icons/ug-48.png",
+    "96": "/dist/icons/ug-96.png",
+    "128": "/dist/icons/ug-128.png"
+  },
+  "background": {
+    "page": "/dist/html/engine.html"
+  },
+  "browser_action": {
+    "default_icon": "/dist/icons/ug-48.png",
+    "default_title": "UG - Open site",
+    "default_popup": "/dist/html/popup.html"
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+ug",
+      "name": "Web Underground",
+      "uriTemplate": "/dist/html/view.html?url=%s"
+    }
+  ],
+  "content_security_policy": "script-src 'self' 'unsafe-eval' https://cdnjs.com https://unpkg.com https://code.jquery.com https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com https://ajax.googleapis.com; object-src 'self';"
+}
