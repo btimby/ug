@@ -48,6 +48,8 @@ class Application {
   }
 
   _manifest(exclude) {
+    debug('Generating manifest.');
+
     const manifest = {};
     const keys = Object.keys(this.fields);
 
@@ -67,6 +69,8 @@ class Application {
 
   sign() {
     /* Signs fields. */
+    debug('Signing manifest');
+
     const manifest = this._manifest();
     const str = JSON.stringify(manifest, (key, val) => (key === 'signature') ? undefined : val);
     const sig = new rs.Signature({alg: 'SHA256withRSA'});
@@ -78,6 +82,8 @@ class Application {
 
   verify() {
     /* Verifies the signature and hashes of the application. */
+    debug('Verifying manifest signature');
+
     if (!this.fields.signature) {
       throw new Error('No signature');
     }
@@ -99,15 +105,18 @@ class Application {
   }
 
   readFile(path) {
-    // Check cache.
-    const file = this._files[path];
+    /* High-level file reading function */
+    debug('Reading file %s', path);
 
     return new Promise((resolve, reject) => {
+      const file = this._files[path];
       if (file) {
+        debug('File %s found in cache', path);
         resolve(file.body);
         return;
       }
 
+      debug('Reading %s from storage', path);
       this._readFile(path)
         .then((body) => {
           const file = this.fields.files.find((f) => (f.name === path));
@@ -115,7 +124,7 @@ class Application {
             reject(new Error('Invalid hash'));
             return;
           }
-          this._files[path] ={ body };
+          this._files[path] = { body };
           resolve(body);
         })
         .catch(reject);
@@ -123,6 +132,9 @@ class Application {
   }
 
   readFiles() {
+    /* Reads all files. */
+    debug('Reading all files.');
+
     return new Promise((resolve, reject) => {
       const promises = [];
 
@@ -155,7 +167,9 @@ class ParsedApplication extends Application {
   }
 
   readFile(path) {
-    /* read file from dictionary. */
+    /* Read file from dictionary. */
+    debug('Reading file %s', path);
+
     // NOTE: No hash check or caching needed.
     const file = this.files[path];
 
@@ -170,6 +184,8 @@ class ParsedApplication extends Application {
 
   save(outPath) {
     /* Saves a loaded or parsed Application to a zip file. */
+    debug('Saving application bundle to %s', outPath);
+
     const manifest = this.sign();
     const zip = new JSZip();
 
@@ -181,6 +197,7 @@ class ParsedApplication extends Application {
 
     if (!outPath) {
       outPath = pathlib.join(process.cwd(), `${this.fields.name}.app`);
+      debug('Path not specified, using %s', outPath);
     }
 
     return new Promise((resolve, reject) => {
@@ -197,6 +214,8 @@ class ParsedApplication extends Application {
   // NOTE: used by compile().
   static parse(path) {
     /* Parses app.json and load all resources. */
+    debug('Parsing application definition %s', path);
+
     const fields = JSON.parse(fs.readFileSync(path));
     const basePath = pathlib.dirname(path);
 
@@ -210,10 +229,12 @@ class ParsedApplication extends Application {
       const pattern = pathlib.join(basePath, desc.pattern);
       let paths;
 
+      debug('Adding path / pattern %s', pattern);
       if (!isGlob(pattern)) {
         paths = [pattern];
       } else {
         paths = glob().readdirSync(pattern);
+        debug('Found matching paths: %O', paths);
       }
 
       for (let i in paths) {
@@ -236,15 +257,20 @@ class ParsedApplication extends Application {
     delete fields.contents;
 
     if (!fields.index) {
+      debug('Definition omitted index.');
+
       // User may omit index field as long as there is a file named "index.html".
       for (let fn in files) {
         const m = fn.match(RE_INDEX);
         if (m) {
+          debug('Using index: %s', fn);
           fields.index = fn;
           break;
         }
       }
     } else {
+      debug('%s defined as index, ensuring it exists', fields.index);
+
       if (!files[fields.index]) {
         throw new Error(`The index field is defined as ${fields.index}, yet no such file is included.`);
       }
@@ -268,7 +294,9 @@ class PackageApplication extends Application {
   }
 
   _readFile(path) {
-    /* read file from zip. */
+    /* Read file from zip. */
+    debug('Reading file %s from zip archive.', path);
+
     return new Promise((resolve, reject) => {
       this.zip.files[path]
         .async('string')
@@ -282,6 +310,8 @@ class PackageApplication extends Application {
   // NOTE: used by createServer().
   static load(file) {
     /* Loads an application from a zip file. */
+    debug('Loading application from bundle.');
+
     return new Promise((resolve, reject) => {
       JSZip
         .loadAsync(file)
@@ -320,7 +350,9 @@ class TorrentApplication extends Application {
   }
 
   _readFile(path) {
-    /* read file from a torrent. */
+    /* Read file from a torrent. */
+    debug('Reading file %s from torrent.', path);
+
     const file = this.torrent.files.find((f) => (f.name === path));
 
     return new Promise((resolve, reject) => {
@@ -341,6 +373,8 @@ class TorrentApplication extends Application {
 
   static load(torrent) {
     /* Load application from a torrent. */
+    debug('Loading application from torrent.');
+
     return new Promise((resolve, reject) => {
       const file = torrent.files.find((f) => (f.name === 'app.json'));
 

@@ -17,6 +17,7 @@ const TRACKERS = [
 
 class PrefixedLocalStorage {
   constructor(prefix) {
+    debug('Setting up storage with prefix %s', prefix);
     this.prefix = prefix;
   }
 
@@ -37,6 +38,8 @@ class PrefixedLocalStorage {
   }
 
   clear() {
+    debug('Clearing storage with prefix %s', this.prefix);
+
     let toRemove = [];
 
     for (let i = 0; i < localStorage.length; i++) {
@@ -72,7 +75,7 @@ class Server {
       this._stats.uploaded = this.torrent.uploaded;
       this._stats.uploadSpeed = this.torrent.uploadSpeed;
       this._stats.maxUploadSpeed = Math.max(
-        stats.maxUploadSpeed, this.torrent.uploadSpeed);
+        this._stats.maxUploadSpeed, this.torrent.uploadSpeed);
     });
 
     // NOTE: stats that change frequently.
@@ -80,7 +83,7 @@ class Server {
       this._stats.downloaded = this.torrent.downloaded;
       this._stats.downloadSpeed = this.torrent.downloadSpeed;
       this._stats.maxDownloadSpeed = Math.max(
-        stats.maxDownloadSpeed, this.torrent.downloadSpeed);
+        this._stats.maxDownloadSpeed, this.torrent.downloadSpeed);
     });
 
     this.torrent.on('wire', () => {
@@ -122,11 +125,13 @@ class Server {
 
 class Engine {
   constructor(opts) {
+    debug('Engine starting.');
+
     // Servers stored by torrent infoHash.
     opts = opts || {};
     opts.torrentOpts = {
-      ...opts.torrentOpts,
       store: LSChunkStore,
+      ...opts.torrentOpts,
     };
 
     this.servers = {};
@@ -145,7 +150,11 @@ class Engine {
 
   _collect() {
     this.wt.on('torrent', (torrent) => {
+      debug('New torrent added: %s', torrent.infoHash);
+
       torrent.on('error', () => {
+        debug('Torrent error, removing server: %s', torrent.infoHash);
+
         // We should remove the server, the torrent is going away.
         this.remove(torrent.infoHash);
       });
@@ -172,6 +181,8 @@ class Engine {
 
   _getOrCreateTorrent(app) {
     /* Retrieves or creates a torrent for the given app. */
+    debug('Getting or creating torrent for application.');
+
     return new Promise((resolve, reject) => {
       const fileObjs = [
         new File([JSON.stringify(app._manifest())], 'app.json'),
@@ -187,6 +198,7 @@ class Engine {
           for (let i in files) {
             fileObjs.push(new File([files[i].body], files[i].name));
           }
+          debug('Torrent contains: %O', fileObjs);
 
           // Create torrent to retrieve infoHash.
           createTorrent(fileObjs, opts, (e, tmp) => {
@@ -200,12 +212,14 @@ class Engine {
             // tmp is a uint8Array instance.
             torrent = this.wt.get(tmp);
             if (torrent) {
+              debug('Torrent exists.');
               resolve(torrent);
               return;
             }
 
             const _seed = () => {
               this.wt.seed(fileObjs, opts, (torrent) => {
+                debug('Seeding torrent.');
                 resolve(torrent);
               });  
             };
@@ -213,17 +227,18 @@ class Engine {
             // Attempt to join swarm.
             try {
               torrent = this.wt.add(tmp.infoHash, opts, (torrent) => {
+                debug('Torrent created');
                 resolve(torrent);
               });
             } catch (e) {
-              debug('Error adding torrent, seeding');
+              debug('Error adding torrent');
               // Error, seed it.
               _seed();
             }
 
             // If an error occurs, seed the torrent.
             torrent.on('error', (e) => {
-              debug('Error adding torrent, seeding');
+              debug('Error adding torrent');
               // Error, seed it.
               _seed();
             });
@@ -242,10 +257,14 @@ class Engine {
   }
 
   createServer(file) {
+    /* Adds a new server for application bundle. */
+    debug('Creating server from file.');
+
     return new Promise((resolve, reject) => {
       PackageApplication
         .load(file)
         .then((app) => {
+          debug('File extracted.');
           this._getOrCreateTorrent(app)
             .then((torrent) => {
               // NOTE: torrent.infoHash === server.id.
@@ -259,6 +278,9 @@ class Engine {
   }
 
   fetch(id) {
+    /* Fetches application via torrent. */
+    debug('Fetching application: %s', id);
+
     return new Promise((resolve, reject) => {
       const _addServer = (torrent) => {
         TorrentApplication.load(torrent)
@@ -277,6 +299,7 @@ class Engine {
   
       const torrent = this.wt.get(id);
       if (torrent) {
+        debug('Torrent exists');
         _addServer(torrent);
         return;
       }
@@ -286,12 +309,16 @@ class Engine {
       };
 
       this.wt.add(id, opts, (torrent) => {
+        debug('Torrent added');
         _addServer(torrent);
       });
     });
   }
 
   remove(id) {
+    /* Removes an application. */
+    debug('Removing server: %s', id);
+
     return new Promise((resolve, reject) => {
       const server = this.get(id);
 
@@ -311,6 +338,9 @@ class Engine {
   }
 
   flush(id) {
+    /* Removes an application and it's storage. */
+    debug('Flusing server: %s', id);
+
     return new Promise((resolve, reject) => {
       const server = this.get(id);
 
@@ -327,6 +357,7 @@ class Engine {
   }
 
   stats() {
+    /* Compiles stats for engine and all servers. */
     return new Promise((resolve, reject) => {
       const engine = JSON.parse(JSON.stringify(this._stats));
       // NOTE: null key is global stats.
@@ -365,7 +396,6 @@ class Engine {
 }
 
 function _start() {
-  debug('Engine, starting');
   window.engine = new Engine();
 
   // TODO: load past applications from localStorage and serve them.

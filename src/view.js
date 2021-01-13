@@ -11,6 +11,9 @@ const SANDBOX_ARGS = 'allow-forms allow-popups allow-modals allow-scripts allow-
 
 
 function parseQs(qs) {
+  /* Parse a query string. */
+  debug('Parsing query string %s', qs);
+
   const args = qs.split('&');
   const obj = {};
 
@@ -26,20 +29,21 @@ function parseQs(qs) {
   return obj;
 }
 
-
-
 function parseHtml(body, F) {
+  /* Parse out HTML body and inline scripts. */
+  debug('Parsing HTML body.');
+
+  F = F || Function;
   // Fetch the content.
   var scripts = [];
   var redact = [];
-
-  F = F || Function;
 
   let tag;
   while ((tag = RE_SCRIPT.exec(body))) {
     // Ignore tags for remote scripts, we only need to handle inline.
     if (tag[0].indexOf('src') !== -1) {
-        continue;
+      debug('Script tag has src attribute, leaving.');
+      continue;
     }
     scripts.push(F(PREAMBLE + tag[1]));
     redact.push([RE_SCRIPT.lastIndex - tag[0].length, RE_SCRIPT.lastIndex]);
@@ -48,6 +52,7 @@ function parseHtml(body, F) {
   // Remove the script tags which correspond to functions we just
   // compiled. This is done in reverse order so that offsets are
   // preserved.
+  debug('Removing %i inline scripts', redact.length);
   for (let i = redact.length - 1; i >= 0; i--) {
     const [start, end] = redact[i];
     body = body.substring(0, start) + 
@@ -60,10 +65,14 @@ function parseHtml(body, F) {
 }
 
 function render(server, sandbox) {
+  /* Render HTML and execute scripts. */
+  debug('Rendering HTML.');
+
   const app = server.app;
   const frame = $('<iframe id="host">');
 
   if (sandbox) {
+    debug('Applying sandbox attributes: %s', SANDBOX_ARGS);
     frame.attr('sandbox', SANDBOX_ARGS);
   }
   frame.appendTo($('body'));
@@ -71,6 +80,7 @@ function render(server, sandbox) {
   const doc = frame[0].contentDocument, win = frame[0].contentWindow;
   let scripts;
 
+  debug('Reading index %s', app.fields.index);
   app.readFile(app.fields.index)
     .then((body) => {
       [body, scripts] = parseHtml(body, win.Function);
@@ -80,6 +90,7 @@ function render(server, sandbox) {
     
       // Execute scripts in context of iframe.
       frame.show();
+      debug('Executing %i scripts.', scripts.length);
       for (var i = 0; i < scripts.length; i++) {
         scripts[i](doc, win);
       }
@@ -89,10 +100,13 @@ function render(server, sandbox) {
 }
 
 function viewApp() {
+  /* Fetch and render application. */
   const query = parseQs(window.location.search.substring(1));
   let url = query.url;
 
+  debug('Viewing application: %s', url);
   if (url.startsWith('web+ug://')) {
+    debug('Stripping URL scheme.');
     url = url.substring(9);
   }
 
