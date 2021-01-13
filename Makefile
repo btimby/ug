@@ -70,11 +70,13 @@ version: guard-VERSION installed-jq installed-sponge
 %.zip: manifest.json dist/css/* dist/html/* dist/icons/* dist/images/* dist/js/*.js
 	zip ${*}.zip -r dist/css dist/html dist/icons dist/images dist/js/*.js manifest.json
 
+# Extensions are all zip files.
 .PHONY: package-%
 package-%: installed-jq
 	$(eval VERSION=$(shell jq -r '.version' package.json))
 	$(MAKE) ${*}-ug-${VERSION}.zip
 
+# Firefox needs special processing.
 .PHONY: package-firefox
 package-firefox: installed-jq
 	$(eval VERSION=$(shell jq -r '.version' package.json))
