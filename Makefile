@@ -1,3 +1,6 @@
+all: build
+
+build: package
 
 .PHONY: distclean
 distclean:
@@ -64,17 +67,23 @@ installed-%:
 version: guard-VERSION installed-jq installed-sponge
 	$(MAKE) set-version VERSION=${VERSION}
 
-%.zip: manifest.json $(shell find dist -type f)
-	zip ${*}.zip -r dist manifest.json
+%.zip: manifest.json dist/css/* dist/html/* dist/icons/* dist/images/* dist/js/*.js
+	zip ${*}.zip -r dist/css dist/html dist/icons dist/images dist/js/*.js manifest.json
 
 .PHONY: package-%
 package-%: installed-jq
 	$(eval VERSION=$(shell jq -r '.version' package.json))
 	$(MAKE) ${*}-ug-${VERSION}.zip
 
+.PHONY: package-firefox
+package-firefox: installed-jq
+	$(eval VERSION=$(shell jq -r '.version' package.json))
+	$(MAKE) firefox-ug-${VERSION}.zip
+	mv firefox-ug-${VERSION}.zip firefox-ug-${VERSION}.xpi
+
 .PHONY: package
-package: package-firefox package-chrome package-opera package-edge
+package: dist package-firefox package-chrome package-opera package-edge
 
 .PHONY: cleanpackage
 cleanpackage:
-	rm -f *-ug-*.zip
+	rm -f *-ug-*.zip *-ug-*.xpi
