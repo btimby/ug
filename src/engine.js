@@ -1,3 +1,4 @@
+const { EventEmitter } = require('events');
 const WebTorrent = require('webtorrent');
 const LSChunkStore = require('ls-chunk-store');
 const createTorrent = require('create-torrent');
@@ -55,8 +56,9 @@ class PrefixedLocalStorage {
   }
 }
 
-class Server {
-  constructor(app, torrent, storage, bugout) {
+class Server extends EventEmitter {
+  constructor(app, torrent, storage) {
+    super();
     this.id = (torrent && torrent.infoHash);
     this.app = app;
     this.torrent = torrent;
@@ -121,9 +123,10 @@ class Server {
   }
 }
 
-class Engine {
+class Engine extends EventEmitter {
   constructor(opts) {
     debug('Engine starting.');
+    super();
 
     // Servers stored by torrent infoHash.
     opts = opts || {};

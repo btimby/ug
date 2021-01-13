@@ -1,5 +1,6 @@
 const pathlib = require('path');
 const fs = require('fs');
+const { EventEmitter } = require('events');
 const { assert } = require('chai');
 const JSZip = require('jszip');
 const SHA256 = require('crypto-js/sha256');
@@ -12,12 +13,13 @@ const debug = require('debug')('ug:index');
 const RE_INDEX = /index.html?/gi;
 
 
-class Application {
+class Application extends EventEmitter {
   isSeeding = false;
   isServing = false;
 
   /* Represents an application. */
   constructor(fields) {
+    super();
     this.fields = fields;
     this._key = fields.key;
     this._pub = null;
