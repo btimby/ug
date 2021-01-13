@@ -3,6 +3,7 @@ const LSChunkStore = require('ls-chunk-store');
 const createTorrent = require('create-torrent');
 const parseTorrent = require('parse-torrent');
 const debug = require('debug')('ug:engine');
+const Bugout = require('bugout');
 const { TorrentApplication, PackageApplication } = require('./index');
 
 
@@ -53,11 +54,42 @@ class PrefixedLocalStorage {
 }
 
 class Server {
-  constructor(app, torrent, storage) {
+  constructor(app, torrent, storage, bugout) {
     this.id = (torrent && torrent.infoHash);
     this.app = app;
     this.torrent = torrent;
     this.storage = storage;
+    this.bugout = new Bugout({
+      torrent: torrent,
+    });
+    this._stats = {};
+    this._collect();
+  }
+
+  _collect() {
+    // NOTE: stats that change frequently.
+    this.torrent.on('upload', (bytes) => {
+      this._stats.uploaded = this.torrent.uploaded;
+      this._stats.uploadSpeed = this.torrent.uploadSpeed;
+      this._stats.maxUploadSpeed = Math.max(
+        stats.maxUploadSpeed, this.torrent.uploadSpeed);
+    });
+
+    // NOTE: stats that change frequently.
+    this.torrent.on('download', (bytes) => {
+      this._stats.downloaded = this.torrent.downloaded;
+      this._stats.downloadSpeed = this.torrent.downloadSpeed;
+      this._stats.maxDownloadSpeed = Math.max(
+        stats.maxDownloadSpeed, this.torrent.downloadSpeed);
+    });
+
+    this.torrent.on('wire', () => {
+      this._stats.numPeers = this.torrent.numPeers;
+    });
+  }
+
+  get stats() {
+    return JSON.parse(JSON.stringify(this._stats));
   }
 
   destroy() {
@@ -89,75 +121,48 @@ class Server {
 
 
 class Engine {
-  constructor() {
+  constructor(opts) {
     // Servers stored by torrent infoHash.
-    this.servers = {};
-    this.wt = new WebTorrent({
+    opts = opts || {};
+    opts.torrentOpts = {
+      ...opts.torrentOpts,
       store: LSChunkStore,
-    })
-    .on('torrent', this._collectStats.bind(this));
-    this._stats = {
-      // NOTE: null key holds aggregate stats.
-      null: {
-        // NOTE: initial values, so stats always exist.
-        uploaded: 0,
-        uploadSpeed: 0,
-        maxUploadSpeed: 0,
-        downloaded: 0,
-        downloadSpeed: 0,
-        maxDownloadSpeed: 0,
-        },
     };
-  }
 
-  _collectStats(torrent) {
-    // Hook up event listeners to maintain per-torrent and global stats.
-    const stats = this._stats[torrent.infoHash] = {
-      // NOTE: stat(s) that don't change.
-      length: torrent.length,
-      id: torrent.infoHash,
-
+    this.servers = {};
+    this.wt = opts.wt || new WebTorrent(opts.torrentOpts);
+    this._stats = {
       // NOTE: initial values, so stats always exist.
-      isSeeding: false,
-      isServing: false,
       uploaded: 0,
       uploadSpeed: 0,
       maxUploadSpeed: 0,
       downloaded: 0,
       downloadSpeed: 0,
       maxDownloadSpeed: 0,
-      ratio: 0,
-      numPeers: 0,
     };
+    this._collect();
+  }
 
-    torrent.on('error', () => {
-      delete this._stats[torrent.infoHash];
-    });
+  _collect() {
+    this.wt.on('torrent', (torrent) => {
+      torrent.on('error', () => {
+        // We should remove the server, the torrent is going away.
+        this.remove(torrent.infoHash);
+      });
 
-    // NOTE: stats that change frequently.
-    torrent.on('upload', (bytes) => {
-      const gStats = this._stats[null];
-      gStats.uploadSpeed = this.wt.uploadSpeed;
-      gStats.maxUploadSpeed = Math.max(gStats.maxUploadSpeed, this.wt.uploadSpeed);
+      // NOTE: stats that change frequently.
+      torrent.on('upload', (bytes) => {
+        this._stats.uploadSpeed = this.wt.uploadSpeed;
+        this._stats.maxUploadSpeed = Math.max(
+          this._stats.maxUploadSpeed, this.wt.uploadSpeed);
+      });
 
-      stats.uploaded = torrent.uploaded;
-      stats.uploadSpeed = torrent.uploadSpeed;
-      stats.maxUploadSpeed = Math.max(stats.maxUploadSpeed, torrent.uploadSpeed);
-    });
-
-    // NOTE: stats that change frequently.
-    torrent.on('download', (bytes) => {
-      const gStats = this._stats[null];
-      gStats.downloadSpeed = this.wt.downloadSpeed;
-      gStats.maxDownloadSpeed = Math.max(gStats.maxDownloadSpeed, this.wt.downloadSpeed);
-
-      stats.downloaded = torrent.downloaded;
-      stats.downloadSpeed = torrent.downloadSpeed;
-      stats.maxDownloadSpeed = Math.max(stats.maxDownloadSpeed, torrent.downloadSpeed);
-    });
-
-    torrent.on('wire', () => {
-      stats.numPeers = torrent.numPeers;
+      // NOTE: stats that change frequently.
+      torrent.on('download', (bytes) => {
+        this._stats.downloadSpeed = this.wt.downloadSpeed;
+        this._stats.maxDownloadSpeed = Math.max(
+          this._stats.maxDownloadSpeed, this.wt.downloadSpeed);
+      });
     });
   }
 
@@ -211,14 +216,14 @@ class Engine {
                 resolve(torrent);
               });
             } catch (e) {
-              debug('Error adding torrent, seeding: %O', e);
+              debug('Error adding torrent, seeding');
               // Error, seed it.
               _seed();
             }
 
             // If an error occurs, seed the torrent.
             torrent.on('error', (e) => {
-              debug('Error adding torrent, seeding: %O', e);
+              debug('Error adding torrent, seeding');
               // Error, seed it.
               _seed();
             });
@@ -323,42 +328,38 @@ class Engine {
 
   stats() {
     return new Promise((resolve, reject) => {
-      const gStats = this._stats[null];
-      const keys = Object.keys(this._stats);
+      const engine = JSON.parse(JSON.stringify(this._stats));
+      // NOTE: null key is global stats.
+      const stats = {
+        null: engine,
+      };
+      const keys = Object.keys(this.servers);
+
+      keys.forEach((key) => {
+        const server = this.get(key);
+        stats[key] = server.stats;
+        stats[key].ratio = server.torrent.ratio;
+        stats[key].progress = server.torrent.progress;
+      });
 
       // NOTE: stats that are sums.
-      gStats.length = keys.reduce((prev, curr) => {
-        return (curr === null) ? prev : prev + this._stats[curr].length || 0;
+      engine.length = keys.reduce((prev, curr) => {
+        return (curr === null) ? prev : prev + stats[curr].length || 0;
       }, 0);
-      gStats.uploaded = keys.reduce((prev, curr) => {
-        return (curr === null) ? prev : prev + this._stats[curr].uploaded || 0;
+      engine.uploaded = keys.reduce((prev, curr) => {
+        return (curr === null) ? prev : prev + stats[curr].uploaded || 0;
       }, 0);
-      gStats.downloaded = keys.reduce((prev, curr) => {
-        return (curr === null) ? prev : prev + this._stats[curr].downloaded || 0;
+      engine.downloaded = keys.reduce((prev, curr) => {
+        return (curr === null) ? prev : prev + stats[curr].downloaded || 0;
       }, 0);
-      gStats.numPeers = keys.reduce((prev, curr) => {
-        return (curr === null) ? prev : prev + this._stats[curr].numPeers || 0;
+      engine.numPeers = keys.reduce((prev, curr) => {
+        return (curr === null) ? prev : prev + stats[curr].numPeers || 0;
       }, 0);
 
       // NOTE: stats that are immediate (like gauges.)
-      gStats.ratio = this.wt.ratio;
+      engine.ratio = this.wt.ratio;
 
-      for (let i = 0; i < this.wt.torrents.length; i++) {
-        const torrent = this.wt.torrents[i];
-        const stats = this._stats[torrent.infoHash];
-
-        const server = this.get(torrent.infoHash);
-        if (server) {
-          stats.isSeeding = (server.app.isSeeding);
-          stats.isServing = (server.app.isServing);
-          stats.name = server.app.fields.name;
-        }
-  
-        stats.ratio = torrent.ratio;
-        stats.progress = torrent.progress;
-      }
-
-      resolve(this._stats);
+      resolve(stats);
     });
   }
 }
@@ -383,5 +384,13 @@ if (document) {
     debug('Error installing protocol handler', e);    
   }
 
-  _start();
+  // Only start engine if running as web extension.
+  if ('browser' in window) {
+    _start();
+  }
 }
+
+module.exports = {
+  Engine,
+  Server,
+};
