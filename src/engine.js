@@ -1,7 +1,6 @@
 const WebTorrent = require('webtorrent');
 const LSChunkStore = require('ls-chunk-store');
 const createTorrent = require('create-torrent');
-const parseTorrent = require('parse-torrent');
 const debug = require('debug')('ug:engine');
 const Bugout = require('bugout');
 const { TorrentApplication, PackageApplication } = require('./index');
@@ -121,7 +120,6 @@ class Server {
     });
   }
 }
-
 
 class Engine {
   constructor(opts) {
