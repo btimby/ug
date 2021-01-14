@@ -1,12 +1,18 @@
 const $ = require('cash-dom');
 const debug = require('debug')('ug:view');
+const runtime = require('./runtime');
 
 
 const RE_SCRIPT = /<script[^>]*>(.*?)<\/script>/gis;
 const RE_BODY = /<html[^>]*>(.*?)<\/html>/is;
+const RE_URL = /(\S+:\/\/\S+?)\//;
 
-// TODO: identify all the necessary globals.
-const PREAMBLE = 'var [document, window] = arguments; ';
+// Attempt to set up a safe environment.
+const PREAMBLE = `
+var [document, window, ug] = arguments;
+window.top = window.parent = {};
+`;
+const RUNTIME = `/dist/js/runtime.js`;
 const SANDBOX_ARGS = 'allow-forms allow-popups allow-modals allow-scripts';
 
 
@@ -33,7 +39,6 @@ function parseHtml(body, F) {
   /* Parse out HTML body and inline scripts. */
   debug('Parsing HTML body.');
 
-  F = F || Function;
   // Fetch the content.
   var scripts = [];
   var redact = [];
@@ -64,16 +69,29 @@ function parseHtml(body, F) {
   return [(m) ? m[1] : body, scripts];
 }
 
-function execute(html, scripts, sandbox) {
-  const frame = $('<iframe id="host">');
+function absURL(path) {
+  const m = window.location.href.match(RE_URL);
+  if (!m) {
+    throw new Error('Could not parse URL');
+  }
 
+  if (!path.startsWith('/')) path = `/${path}`;
+
+  return `${m[1]}${path}`;
+}
+
+function execute(html, scripts, sandbox) {
+  debug('Creating host iframe.');
+  const frame = $('<iframe id="host">');
   frame.appendTo($('body'));
   const doc = frame[0].contentDocument, win = frame[0].contentWindow, F = win.Function;
+
+  debug('Writing HTML.');
   doc.write(html);
 
   // Sandbox AFTER making our modifications, we can be more restrictive.
   if (sandbox) {
-    debug('Applying sandbox attributes: %s', SANDBOX_ARGS);
+    debug('Sandboxing iframe: %s', SANDBOX_ARGS);
     frame.attr('sandbox', SANDBOX_ARGS);
   }
 
@@ -81,7 +99,7 @@ function execute(html, scripts, sandbox) {
   frame.show();
   debug('Executing %i scripts.', scripts.length);
   for (var i = 0; i < scripts.length; i++) {
-    F(PREAMBLE + scripts[i])(doc, win);
+    F(PREAMBLE + scripts[i])(doc, win, runtime);
   }
   doc.close();
 }
@@ -98,7 +116,7 @@ function render(server) {
   app.readFile(app.fields.index)
     .then((body) => {
       [body, scripts] = parseHtml(body);
-      execute(body, scripts, true);
+      execute(body, scripts, false);
     })
     .catch(debug);
 }
@@ -132,4 +150,6 @@ if (document && 'browser' in window) {
 module.exports = {
   parseHtml,
   parseQs,
+  absURL,
+  execute,
 };

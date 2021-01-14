@@ -1,4 +1,4 @@
-const { parseHtml, parseQs } = require('../../src/view');
+const { parseHtml, parseQs, absURL, execute } = require('../../src/view');
 
 
 // Building blocks.
@@ -29,6 +29,17 @@ const QUERYSTRINGS = [
   'FOO=FOO&foo=foo',
 ];
 
+// Sandobx tests.
+const SANDBOX = [
+  {
+    html: '<h1>Hi</h1>',
+    scripts: [
+      `
+window.foo = 'foo';
+      `
+    ],
+  }
+];
 
 describe('view.js', () => {
   describe('#parseHtml()', () => {
@@ -46,7 +57,7 @@ describe('view.js', () => {
         // Each ocument contains one script. The script should be returned as a function
         // which is wrapped by sandboxing preamble. Just check that it contains the code.
         assert.strictEqual(scripts.length, 1);
-        assert.strictEqual(typeof(scripts[0]), 'function');
+        assert.strictEqual(typeof(scripts[0]), 'string');
         assert.include(scripts[0].toString(), CODE);
       }
     });
@@ -56,7 +67,7 @@ describe('view.js', () => {
       assert.include(body, H1);
       assert.strictEqual(scripts.length, 2);
       for (let i = 0; i < scripts.length; i++) {
-        assert.strictEqual(typeof(scripts[i]), 'function');
+        assert.strictEqual(typeof(scripts[i]), 'string');
         assert.include(scripts[i].toString(), CODE);
       }
     });
@@ -66,18 +77,60 @@ describe('view.js', () => {
       assert.include(body, H1);
       assert.include(body, 'https://cdnjs.com/jquery.js');
       assert.strictEqual(scripts.length, 1);
-      assert.strictEqual(typeof(scripts[0]), 'function');
+      assert.strictEqual(typeof(scripts[0]), 'string');
       assert.include(scripts[0].toString(), CODE);
     });
   });
 
   describe('#parseQs()', () => {
-    for (let i = 0; i < QUERYSTRINGS.length; i++) {
-      let obj = parseQs(QUERYSTRINGS[i]);
-      assert.hasAllKeys(obj, ['foo', 'FOO']);
-      Object.keys(obj).forEach((key) => {
-        assert.strictEqual(key, obj[key]);
-      })
-    }
+    it('can parse querystrings', () => {
+      for (let i = 0; i < QUERYSTRINGS.length; i++) {
+        let obj = parseQs(QUERYSTRINGS[i]);
+        assert.hasAllKeys(obj, ['foo', 'FOO']);
+        Object.keys(obj).forEach((key) => {
+          assert.strictEqual(key, obj[key]);
+        })
+      }
+    });
+  });
+
+  describe('#absURL()', () => {
+    it('can create an absolute URL.', () => {
+      const url = absURL('/dist/js/runtime.js');
+
+      // NOTE: the base URL may change if karma.config.js is modified.
+      assert.strictEqual(url, 'http://localhost:9876/dist/js/runtime.js');
+    });
+  });
+
+  describe('#execute()', () => {
+    afterEach(() => {
+      document.getElementById('host').remove();
+    });
+
+    it('isolates parent window', () => {
+      execute('<h1>Hi</h1>', [
+        'document.foo = window.parent.foo = window.foo = "foo"',
+      ]);
+
+      const frame = document.getElementById('host');
+      // Ensure script can access it's own document, window.
+      assert.strictEqual(frame.contentWindow.foo, 'foo');
+      assert.strictEqual(frame.contentDocument.foo, 'foo');
+
+      // But not ours.
+      assert.isUndefined(window.foo);
+      assert.isUndefined(document.foo);
+    });
+
+    it('injects runtime', () => {
+      execute('<h1>Hi</h1>', [
+        'window.ping = ug.ping()',
+      ]);
+
+      const frame = document.getElementById('host');
+      // Ensure script can access it's own document, window.
+      assert.strictEqual(frame.contentWindow.ping, 'pong');
+    });
   });
 });

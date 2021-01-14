@@ -1,5 +1,6 @@
 module.exports = function(config) {
   config.set({
+    basePath: '.',
     frameworks: ['browserify', 'mocha', 'chai'],
     files: [
       'tests/browser/bus_mock.js',
