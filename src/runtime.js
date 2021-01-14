@@ -82,4 +82,6 @@ class Runtime {
   }
 }
 
-module.exports = Runtime;
+module.exports = {
+  Runtime,
+};

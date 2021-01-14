@@ -1,5 +1,5 @@
 const { parseHtml, parseQs, absURL } = require('../../src/view');
-const Runtime = require('../../src/runtime');
+const { Runtime } = require('../../src/runtime');
 
 
 // Building blocks.
@@ -108,11 +108,10 @@ describe('view.js', () => {
     let runtime;
 
     beforeEach(() => {
-      runtime = new Runtime({
-        server: {
-          id: 'foo',
-        },
-      });
+      const server = {
+        id: 'foo',
+      };
+      runtime = new Runtime(server, true);
     });
 
     afterEach(() => {

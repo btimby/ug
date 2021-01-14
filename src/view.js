@@ -1,6 +1,6 @@
 const $ = require('cash-dom');
 const debug = require('debug')('ug:view');
-const Runtime = require('./runtime');
+const { Runtime } = require('./runtime');
 
 
 const RE_SCRIPT = /<script[^>]*>(.*?)<\/script>/gis;
