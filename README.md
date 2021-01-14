@@ -1,4 +1,4 @@
-# Web Undergrond
+# Web Underground
 
 Web Underground is a browser extension and toolkit that allows anyone with a compatible web browser to host a website from their computer.
 
@@ -7,6 +7,7 @@ In contrast to hosting a traditional website, which requires a web hosting servi
 In Firefox, this extension registers a custom URI scheme handler `web+ug://` to load sites. Other browsers don't (yet) support this, although support is in the works. For these browsers, you must instead enter the link into the extension popup menu to load a site.
 
 The main driver for this project is to achieve the following goals:
+
 
  - Allow anyone anywhere to publish a website quickly and easily.
  - Remove the dependencies on other parties, such as web hosts, domain regsitrars and dns providers.
