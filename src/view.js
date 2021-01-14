@@ -7,7 +7,7 @@ const RE_BODY = /<html[^>]*>(.*?)<\/html>/is;
 
 // TODO: identify all the necessary globals.
 const PREAMBLE = 'var [document, window] = arguments; ';
-const SANDBOX_ARGS = 'allow-forms allow-popups allow-modals allow-scripts allow-same-origin';
+const SANDBOX_ARGS = 'allow-forms allow-popups allow-modals allow-scripts';
 
 
 function parseQs(qs) {
@@ -45,7 +45,7 @@ function parseHtml(body, F) {
       debug('Script tag has src attribute, leaving.');
       continue;
     }
-    scripts.push(F(PREAMBLE + tag[1]));
+    scripts.push(tag[1]);
     redact.push([RE_SCRIPT.lastIndex - tag[0].length, RE_SCRIPT.lastIndex]);
   }
 
@@ -64,37 +64,41 @@ function parseHtml(body, F) {
   return [(m) ? m[1] : body, scripts];
 }
 
-function render(server, sandbox) {
-  /* Render HTML and execute scripts. */
-  debug('Rendering HTML.');
-
-  const app = server.app;
+function execute(html, scripts, sandbox) {
   const frame = $('<iframe id="host">');
 
+  frame.appendTo($('body'));
+  const doc = frame[0].contentDocument, win = frame[0].contentWindow, F = win.Function;
+  doc.write(html);
+
+  // Sandbox AFTER making our modifications, we can be more restrictive.
   if (sandbox) {
     debug('Applying sandbox attributes: %s', SANDBOX_ARGS);
     frame.attr('sandbox', SANDBOX_ARGS);
   }
-  frame.appendTo($('body'));
 
-  const doc = frame[0].contentDocument, win = frame[0].contentWindow;
+  // Execute scripts in context of iframe.
+  frame.show();
+  debug('Executing %i scripts.', scripts.length);
+  for (var i = 0; i < scripts.length; i++) {
+    F(PREAMBLE + scripts[i])(doc, win);
+  }
+  doc.close();
+}
+
+function render(server) {
+  /* Render HTML and execute scripts. */
+  debug('Rendering application.');
+
   let scripts;
+  const app = server.app;
+  document.title = `Web Underground :: view :: ${app.fields.name}`;
 
   debug('Reading index %s', app.fields.index);
   app.readFile(app.fields.index)
     .then((body) => {
-      [body, scripts] = parseHtml(body, win.Function);
-      // TODO: fix this.
-      document.title = `Web Underground :: view :: ${app.fields.name}`;
-      doc.write(body);
-    
-      // Execute scripts in context of iframe.
-      frame.show();
-      debug('Executing %i scripts.', scripts.length);
-      for (var i = 0; i < scripts.length; i++) {
-        scripts[i](doc, win);
-      }
-      doc.close();
+      [body, scripts] = parseHtml(body);
+      execute(body, scripts, true);
     })
     .catch(debug);
 }
@@ -113,7 +117,7 @@ function viewApp() {
   window.bus
     .fetch(url)
     .then((server) => {
-      render(server, true);
+      render(server);
     });
 }
 
