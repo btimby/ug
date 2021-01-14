@@ -436,7 +436,7 @@ function _start() {
 if ('browser' in window) {
   // This does not currently work, see:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=64100&q=registerprotocolhandler%20extension&can=2
-  const url = runtime.getURL('/dist/html/view.html?url=%s');
+  const url = chrome.runtime.getURL('/dist/html/view.html?url=%s');
   debug('URL for protocol handler: %s', url);
   try {
     navigator.registerProtocolHandler(
