@@ -59,6 +59,10 @@ describe('engine.js', () => {
       engine = new Engine({ wt: wt });
     });
 
+    afterEach(() => {
+      wt.destroy();
+    });
+
     it('can load an application', (done) => {
       engine
         .createServer(atob(APP))
