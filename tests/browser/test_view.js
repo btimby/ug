@@ -105,6 +105,7 @@ describe('view.js', () => {
 
   describe('#execute()', () => {
     afterEach(() => {
+      // NOTE: this is necessary because execute() is not intended to run more than once.
       document.getElementById('host').remove();
     });
 
@@ -124,9 +125,16 @@ describe('view.js', () => {
     });
 
     it('injects runtime', () => {
+      // A runtime for our test run.
+      const runtime = {
+        ping() {
+          return "pong";
+        },
+      };
+
       execute('<h1>Hi</h1>', [
         'window.ping = ug.ping()',
-      ]);
+      ], runtime);
 
       const frame = document.getElementById('host');
       // Ensure script can access it's own document, window.

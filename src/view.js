@@ -80,8 +80,15 @@ function absURL(path) {
   return `${m[1]}${path}`;
 }
 
-function execute(html, scripts, sandbox) {
-  debug('Creating host iframe.');
+function execute(html, scripts, sb, rt) {
+  if (typeof(sb) === 'object') {
+    rt = sb;
+    sb = true;
+  }
+  rt = rt || runtime;
+
+  debug('Creating host iframe, sandbox: %s, runtime: %O.', sb, rt);
+
   const frame = $('<iframe id="host">');
   frame.appendTo($('body'));
   const doc = frame[0].contentDocument, win = frame[0].contentWindow, F = win.Function;
@@ -90,7 +97,7 @@ function execute(html, scripts, sandbox) {
   doc.write(html);
 
   // Sandbox AFTER making our modifications, we can be more restrictive.
-  if (sandbox) {
+  if (sb) {
     debug('Sandboxing iframe: %s', SANDBOX_ARGS);
     frame.attr('sandbox', SANDBOX_ARGS);
   }
@@ -99,7 +106,7 @@ function execute(html, scripts, sandbox) {
   frame.show();
   debug('Executing %i scripts.', scripts.length);
   for (var i = 0; i < scripts.length; i++) {
-    F(PREAMBLE + scripts[i])(doc, win, runtime);
+    F(PREAMBLE + scripts[i])(doc, win, rt);
   }
   doc.close();
 }
