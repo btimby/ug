@@ -9,9 +9,9 @@ const RE_URL = /(\S+:\/\/\S+?)\//;
 
 // Attempt to set up a safe environment.
 const PREAMBLE = `
-var [document, window, runtime] = arguments;
-runtime.install(window);
+let [window, document, runtime] = arguments;
 window.top = window.parent = {};
+runtime.install(window, document);
 `;
 const RUNTIME = `/dist/js/runtime.js`;
 const SANDBOX_ARGS = 'allow-forms allow-popups allow-modals allow-scripts';
@@ -101,7 +101,7 @@ function execute(html, scripts, sandbox, runtime) {
   frame.show();
   debug('Executing %i scripts.', scripts.length);
   for (var i = 0; i < scripts.length; i++) {
-    F(PREAMBLE + scripts[i])(doc, win, runtime);
+    F(PREAMBLE + scripts[i])(win, doc, runtime);
   }
   doc.close();
 }

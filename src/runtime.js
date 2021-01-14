@@ -16,21 +16,26 @@ class Runtime {
     this.sessionStorage = new PrefixedSessionStorage(prefix);
   }
 
-  install(window) {
-    // Provide prefixed storage.
-    Object.defineProperty(window, 'localStorage', {
-      value: this.localStorage,
-    });
-    Object.defineProperty(window, 'sessionStorage', {
-      value: this.sessionStorage,
-    });
+  install(window, document) {
+    const windowAttrs = {
+      // Provide prefixed storage.
+      localStorage: this.localStorage,
+      sessionStorage: this.sessionStorage,
+    };
 
+    for (let key in windowAttrs) {
+      Object.defineProperty(window, key, {
+        value: windowAttrs[key],
+        configurable: true,
+      })
+    }
+
+    // Methods exposed to scripts.
     window.ug = {
       ping: this.ping,
     };
   }
 
-  // Methods exposed to scripts.
   ping() {
     return 'pong';
   }
