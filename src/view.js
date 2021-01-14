@@ -9,7 +9,8 @@ const RE_URL = /(\S+:\/\/\S+?)\//;
 
 // Attempt to set up a safe environment.
 const PREAMBLE = `
-var [document, window, localStorage, ug] = arguments;
+var [document, window, runtime] = arguments;
+runtime.install(window);
 window.top = window.parent = {};
 `;
 const RUNTIME = `/dist/js/runtime.js`;
@@ -80,8 +81,8 @@ function absURL(path) {
   return `${m[1]}${path}`;
 }
 
-function execute(html, scripts, sandbox, runtime, storage) {
-  debug('Creating host iframe, sandbox: %s, runtime: %O, storage: %O.', sandbox, runtime, storage);
+function execute(html, scripts, sandbox, runtime) {
+  debug('Creating host iframe, sandbox: %s, runtime: %O.', sandbox, runtime);
 
   const frame = $('<iframe id="host">');
   frame.appendTo($('body'));
@@ -100,7 +101,7 @@ function execute(html, scripts, sandbox, runtime, storage) {
   frame.show();
   debug('Executing %i scripts.', scripts.length);
   for (var i = 0; i < scripts.length; i++) {
-    F(PREAMBLE + scripts[i])(doc, win, storage, runtime);
+    F(PREAMBLE + scripts[i])(doc, win, runtime);
   }
   doc.close();
 }
@@ -118,7 +119,7 @@ function render(server) {
   app.readFile(app.fields.index)
     .then((body) => {
       [body, scripts] = parseHtml(body);
-      execute(body, scripts, true, runtime, server.storage);
+      execute(body, scripts, true, runtime);
     })
     .catch(debug);
 }

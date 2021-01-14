@@ -1,4 +1,5 @@
 const { parseHtml, parseQs, absURL, execute } = require('../../src/view');
+const Runtime = require('../../src/runtime');
 
 
 // Building blocks.
@@ -104,6 +105,16 @@ describe('view.js', () => {
   });
 
   describe('#execute()', () => {
+    let runtime;
+
+    beforeEach(() => {
+      runtime = new Runtime({
+        server: {
+          id: 'foo',
+        },
+      });
+    });
+
     afterEach(() => {
       // NOTE: this is necessary because execute() is not intended to run more than once.
       document.getElementById('host').remove();
@@ -112,7 +123,7 @@ describe('view.js', () => {
     it('isolates parent window', () => {
       execute('<h1>Hi</h1>', [
         'document.foo = window.parent.foo = window.foo = "foo"',
-      ]);
+      ], true, runtime);
 
       const frame = document.getElementById('host');
       // Ensure script can access it's own document, window.
@@ -126,26 +137,13 @@ describe('view.js', () => {
 
     it('injects runtime', () => {
       // A runtime for our test run.
-      let a = 0;
-      const runtime = {
-        ping() {
-          return "pong";
-        },
-
-        incr() {
-          a++;
-        },
-      };
-      const storage = {};
-
       execute('<h1>Hi</h1>', [
-        'window.ping = ug.ping(); ug.incr();',
-      ], true, runtime, storage);
+        'window.ping = ug.ping();',
+      ], true, runtime);
 
       const frame = document.getElementById('host');
       // Ensure script can access it's own document, window.
       assert.strictEqual(frame.contentWindow.ping, 'pong');
-      assert.strictEqual(a, 1);
     });
   });
 });

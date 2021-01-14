@@ -15,7 +15,7 @@ const TRACKERS = [
 ];
 
 
-class PrefixedLocalStorage {
+class PrefixedStorage {
   constructor(prefix) {
     debug('Setting up storage with prefix %s', prefix);
     this.prefix = prefix;
@@ -26,15 +26,15 @@ class PrefixedLocalStorage {
   }
 
   setItem(key, value) {
-    localStorage.setItem(this._makeKey(key), value);
+    this.backend.setItem(this._makeKey(key), value);
   }
 
   getItem(key) {
-    return localStorage.getItem(this._makeKey(key));
+    return this.backend.getItem(this._makeKey(key));
   }
 
   removeItem(key) {
-    localStorage.removeItem(this._makeKey(key));
+    this.backend.removeItem(this._makeKey(key));
   }
 
   clear() {
@@ -43,7 +43,7 @@ class PrefixedLocalStorage {
     let toRemove = [];
 
     for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
+      const key = this.backend.key(i);
 
       if (key.startsWith(`${this.prefix}-`)) {
         toRemove.push(key);
@@ -51,18 +51,25 @@ class PrefixedLocalStorage {
     }
 
     for (let i = 0; i < toRemove.length; i++) {
-      localStorage.removeItem(toRemove[i]);
+      this.backend.removeItem(toRemove[i]);
     }
   }
 }
 
+class PrefixedLocalStorage extends PrefixedStorage {
+  backend = localStorage;
+}
+
+class PrefixedSessionStorage extends PrefixedStorage {
+  backend = sessionStorage;
+}
+
 class Server extends EventEmitter {
-  constructor(app, torrent, storage) {
+  constructor(app, torrent) {
     super();
     this.id = (torrent && torrent.infoHash);
     this.app = app;
     this.torrent = torrent;
-    this.storage = storage;
     this.bugout = new Bugout({
       torrent: torrent,
     });
@@ -77,6 +84,7 @@ class Server extends EventEmitter {
       ratio: 0,
       progress: 0,
     };
+    this._storage = null;
     this._collect();
   }
 
@@ -126,6 +134,13 @@ class Server extends EventEmitter {
 
   get stats() {
     return JSON.parse(JSON.stringify(this._stats));
+  }
+
+  get storage() {
+    if (this._storage === null) {
+      this._storage = new PrefixedLocalStorage(`s:${torrent.infoHash}`);
+    }
+    return this._storage;
   }
 
   destroy() {
@@ -206,10 +221,6 @@ class Engine extends EventEmitter {
           this._stats.maxDownloadSpeed, this.wt.downloadSpeed);
       });
     });
-  }
-
-  _createStorage(id) {
-    return new PrefixedLocalStorage(id);
   }
 
   _getOrCreateTorrent(app) {
@@ -300,9 +311,7 @@ class Engine extends EventEmitter {
           debug('File extracted.');
           this._getOrCreateTorrent(app)
             .then((torrent) => {
-              // NOTE: torrent.infoHash === server.id.
-              const storage = this._createStorage(torrent.infoHash);
-              resolve(this._add(new Server(app, torrent, storage)));
+              resolve(this._add(new Server(app, torrent)));
             })
             .catch(reject);
         })
@@ -452,4 +461,5 @@ module.exports = {
   Engine,
   Server,
   PrefixedLocalStorage,
+  PrefixedSessionStorage,
 };
