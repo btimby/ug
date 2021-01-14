@@ -51,7 +51,7 @@ const APP = 'UEsDBAoACAAAAGSqLVIAAAAAAAAAAAAAAAAIAAAAYXBwLmpzb257Im5hbWUiOiJ0b2R
 
 describe('engine.js', () => {
   describe('#Engine', () => {
-    let engine, wt, app;
+    let engine, wt;
 
     beforeEach(() => {
       // Disable all discovery mechanisms (private mode).
@@ -59,9 +59,7 @@ describe('engine.js', () => {
       engine = new Engine({ wt: wt });
     });
 
-    it('can load an application', function (done) {
-      this.timeout(5000);
-
+    it('can load an application', (done) => {
       engine
         .createServer(atob(APP))
         .then((server) => {
@@ -78,7 +76,16 @@ describe('engine.js', () => {
           // Ensure server is stored in engine.
           assert.deepStrictEqual(Object.keys(engine.servers), [server.id]);
 
-          done();
+          // Ensure wt is serving the torrent.
+          assert.strictEqual(wt.torrents[0], server.torrent);
+
+          // Ensure stats are present.
+          engine
+            .stats()
+            .then((stats) => {
+              assert.deepStrictEqual(stats[server.id], server.stats);
+              done();
+            });
         })
         .catch(done);
     });
