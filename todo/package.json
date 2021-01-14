@@ -1,0 +1,17 @@
+{
+  "name": "todo",
+  "version": "1.0.0",
+  "description": "Web Underground sample application",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "serve": "live-server"
+  },
+  "author": "Ben Timby <btimby@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "live-server": "^1.2.1",
+    "vue": "^2.6.12",
+    "vue-cli": "^2.9.6"
+  }
+}
