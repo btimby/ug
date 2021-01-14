@@ -126,19 +126,25 @@ describe('view.js', () => {
 
     it('injects runtime', () => {
       // A runtime for our test run.
+      let a = 0;
       const runtime = {
         ping() {
           return "pong";
         },
+
+        incr() {
+          a++;
+        },
       };
 
       execute('<h1>Hi</h1>', [
-        'window.ping = ug.ping()',
+        'window.ping = ug.ping(); ug.incr();',
       ], runtime);
 
       const frame = document.getElementById('host');
       // Ensure script can access it's own document, window.
       assert.strictEqual(frame.contentWindow.ping, 'pong');
+      assert.strictEqual(a, 1);
     });
   });
 });
