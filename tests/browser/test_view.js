@@ -1,4 +1,4 @@
-const { parseHtml, parseQs, absURL, execute } = require('../../src/view');
+const { parseHtml, parseQs, absURL } = require('../../src/view');
 const Runtime = require('../../src/runtime');
 
 
@@ -117,13 +117,13 @@ describe('view.js', () => {
 
     afterEach(() => {
       // NOTE: this is necessary because execute() is not intended to run more than once.
-      document.getElementById('host').remove();
+      runtime.destroy();
     });
 
     it('isolates parent window', () => {
-      execute('<h1>Hi</h1>', [
+      runtime.execute('<h1>Hi</h1>', [
         'document.foo = window.parent.foo = window.foo = "foo"',
-      ], true, runtime);
+      ]);
 
       const frame = document.getElementById('host');
       // Ensure script can access it's own document, window.
@@ -137,9 +137,9 @@ describe('view.js', () => {
 
     it('injects runtime', () => {
       // A runtime for our test run.
-      execute('<h1>Hi</h1>', [
+      runtime.execute('<h1>Hi</h1>', [
         'window.ping = ug.ping();',
-      ], true, runtime);
+      ]);
 
       const frame = document.getElementById('host');
       // Ensure script can access it's own document, window.

@@ -7,15 +7,6 @@ const RE_SCRIPT = /<script[^>]*>(.*?)<\/script>/gis;
 const RE_BODY = /<html[^>]*>(.*?)<\/html>/is;
 const RE_URL = /(\S+:\/\/\S+?)\//;
 
-// Attempt to set up a safe environment.
-const PREAMBLE = `
-let [window, document, runtime] = arguments;
-window.top = window.parent = {};
-runtime.install(window, document);
-`;
-const RUNTIME = `/dist/js/runtime.js`;
-const SANDBOX_ARGS = 'allow-forms allow-popups allow-modals allow-scripts';
-
 
 function parseQs(qs) {
   /* Parse a query string. */
@@ -81,45 +72,20 @@ function absURL(path) {
   return `${m[1]}${path}`;
 }
 
-function execute(html, scripts, sandbox, runtime) {
-  debug('Creating host iframe, sandbox: %s, runtime: %O.', sandbox, runtime);
-
-  const frame = $('<iframe id="host">');
-  frame.appendTo($('body'));
-  const doc = frame[0].contentDocument, win = frame[0].contentWindow, F = win.Function;
-
-  debug('Writing HTML.');
-  doc.write(html);
-
-  // Sandbox AFTER making our modifications, we can be more restrictive.
-  if (sandbox) {
-    debug('Sandboxing iframe: %s', SANDBOX_ARGS);
-    frame.attr('sandbox', SANDBOX_ARGS);
-  }
-
-  // Execute scripts in context of iframe.
-  frame.show();
-  debug('Executing %i scripts.', scripts.length);
-  for (var i = 0; i < scripts.length; i++) {
-    F(PREAMBLE + scripts[i])(win, doc, runtime);
-  }
-  doc.close();
-}
-
 function render(server) {
   /* Render HTML and execute scripts. */
   debug('Rendering application.');
 
   let scripts;
   const app = server.app;
-  const runtime = new Runtime(server);
+  const runtime = new Runtime(server, true);
   document.title = `Web Underground :: view :: ${app.fields.name}`;
 
   debug('Reading index %s', app.fields.index);
   app.readFile(app.fields.index)
     .then((body) => {
       [body, scripts] = parseHtml(body);
-      execute(body, scripts, true, runtime);
+      runtime.execute(scripts);
     })
     .catch(debug);
 }
@@ -154,5 +120,4 @@ module.exports = {
   parseHtml,
   parseQs,
   absURL,
-  execute,
 };
