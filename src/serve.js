@@ -92,17 +92,19 @@ function setup(server) {
   $('#author').text(app.fields.author);
   $('#desc').text(app.fields.description);
 
-  torrent.on('warning', log);
-  torrent.on('error', log);
+  server.on('log', log);
 
-  torrent.on('wire', (peer, addr) => {
-    log('Peer {0} connected', addr);
-  });
-  torrent.on('upload', (bytes) => {
-    log('Sent {0} bytes', bytes);
+  server.on('stats', (stats) => {
+    $('#peers').text(stats.peers);
+    $('#upbytes').text(stats.uploaded);
+    $('#upspeed').text(stats.uploadSpeed);
+    $('#upmax').text(stats.maxUploadSpeed);
+    $('#downbytes').text(stats.downloaded);
+    $('#downspeed').text(stats.downloadSpeed);
+    $('#downmax').text(stats.maxDownloadSpeed);
   });
 
-  setInterval(() => {
+/*  setInterval(() => {
     window.bus
       .stats()
       .then((stats) => {
@@ -139,15 +141,8 @@ function setup(server) {
 
         // Torrent specific stats.
         stats = stats[torrent.infoHash];
-        $('#peers').text(stats.numPeers);
-        $('#upbytes').text(stats.uploaded);
-        $('#upspeed').text(stats.uploadSpeed);
-        $('#upmax').text(stats.maxUploadSpeed);
-        $('#downbytes').text(stats.downloaded);
-        $('#downspeed').text(stats.downloadSpeed);
-        $('#downmax').text(stats.maxDownloadSpeed);
       });
-  }, 1000);
+  }, 1000);*/
 }
 
 function stop() {

@@ -66,29 +66,61 @@ class Server extends EventEmitter {
     this.bugout = new Bugout({
       torrent: torrent,
     });
-    this._stats = {};
+    this._stats = {
+      peers: 0,
+      uploaded: 0,
+      uploadSpeed: 0,
+      maxUploadSpeed: 0,
+      downloaded: 0,
+      downloadSpeed: 0,
+      maxDownloadSpeed: 0,
+      ratio: 0,
+      progress: 0,
+    };
     this._collect();
   }
 
   _collect() {
+    /* Collect stats and log events. */
+    debug('Setting up stats collection.');
+
+    const torrent = this.torrent, stats = this._stats;
+
     // NOTE: stats that change frequently.
-    this.torrent.on('upload', (bytes) => {
-      this._stats.uploaded = this.torrent.uploaded;
-      this._stats.uploadSpeed = this.torrent.uploadSpeed;
-      this._stats.maxUploadSpeed = Math.max(
-        this._stats.maxUploadSpeed, this.torrent.uploadSpeed);
+    torrent.on('upload', (bytes) => {
+      stats.uploaded = torrent.uploaded;
+      stats.uploadSpeed = torrent.uploadSpeed;
+      stats.maxUploadSpeed = Math.max(
+        stats.maxUploadSpeed, torrent.uploadSpeed);
+      stats.ratio = torrent.ratio;
+      stats.progress = torrent.progress;
+      this.emit('stats', stats);
     });
 
     // NOTE: stats that change frequently.
-    this.torrent.on('download', (bytes) => {
-      this._stats.downloaded = this.torrent.downloaded;
-      this._stats.downloadSpeed = this.torrent.downloadSpeed;
-      this._stats.maxDownloadSpeed = Math.max(
-        this._stats.maxDownloadSpeed, this.torrent.downloadSpeed);
+    torrent.on('download', (bytes) => {
+      stats.downloaded = torrent.downloaded;
+      stats.downloadSpeed = torrent.downloadSpeed;
+      stats.maxDownloadSpeed = Math.max(
+        stats.maxDownloadSpeed, torrent.downloadSpeed);
+      stats.ratio = torrent.ratio;
+      stats.progress = torrent.progress;
+      this.emit('stats', stats);
     });
 
     this.torrent.on('wire', () => {
-      this._stats.numPeers = this.torrent.numPeers;
+      stats.peers = torrent.numPeers;
+      this.emit('stats', stats);
+    });
+
+    torrent.on('warning', (msg) => this.emit('log', msg));
+    torrent.on('error', (msg) => this.emit('log', msg));
+  
+    torrent.on('wire', (peer, addr) => {
+      this.emit('log', 'Peer {0} connected', addr);
+    });
+    torrent.on('upload', (bytes) => {
+      this.emit('log', 'Sent {0} bytes', bytes);
     });
   }
 
@@ -370,8 +402,6 @@ class Engine extends EventEmitter {
       keys.forEach((key) => {
         const server = this.get(key);
         stats[key] = server.stats;
-        stats[key].ratio = server.torrent.ratio;
-        stats[key].progress = server.torrent.progress;
       });
 
       // NOTE: stats that are sums.
@@ -403,10 +433,10 @@ function _start() {
 }
 
 // Only run in browser.
-if (document) {
+if ('browser' in window) {
   // This does not currently work, see:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=64100&q=registerprotocolhandler%20extension&can=2
-  const url = chrome.runtime.getURL('/dist/html/view.html?url=%s');
+  const url = runtime.getURL('/dist/html/view.html?url=%s');
   debug('URL for protocol handler: %s', url);
   try {
     navigator.registerProtocolHandler(
@@ -415,10 +445,7 @@ if (document) {
     debug('Error installing protocol handler', e);    
   }
 
-  // Only start engine if running as web extension.
-  if ('browser' in window) {
-    _start();
-  }
+  _start();
 }
 
 module.exports = {
