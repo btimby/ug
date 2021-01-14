@@ -136,10 +136,11 @@ describe('view.js', () => {
           a++;
         },
       };
+      const storage = {};
 
       execute('<h1>Hi</h1>', [
         'window.ping = ug.ping(); ug.incr();',
-      ], runtime);
+      ], true, runtime, storage);
 
       const frame = document.getElementById('host');
       // Ensure script can access it's own document, window.

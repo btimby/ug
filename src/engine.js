@@ -21,7 +21,7 @@ class PrefixedLocalStorage {
     this.prefix = prefix;
   }
 
-  _makeKey() {
+  _makeKey(key) {
     return `${this.prefix}-${key}`;
   }
 
@@ -45,13 +45,13 @@ class PrefixedLocalStorage {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
 
-      if (key.startsWith(this.prefix)) {
+      if (key.startsWith(`${this.prefix}-`)) {
         toRemove.push(key);
       }
     }
 
     for (let i = 0; i < toRemove.length; i++) {
-      locaStorage.removeItem(toRemove[i]);
+      localStorage.removeItem(toRemove[i]);
     }
   }
 }
@@ -451,4 +451,5 @@ if ('browser' in window) {
 module.exports = {
   Engine,
   Server,
+  PrefixedLocalStorage,
 };

@@ -1,5 +1,5 @@
 const WebTorrent = require('webtorrent');
-const { Server, Engine } = require('../../src/engine');
+const { Engine, PrefixedLocalStorage } = require('../../src/engine');
 const { assert } = require('chai');
 
 const FIELDS = {
@@ -92,6 +92,55 @@ describe('engine.js', () => {
             });
         })
         .catch(done);
+    });
+
+    describe('#PrefixedLocalStorage', () => {
+      let storageA, storageB;
+
+      beforeEach(() => {
+        storageA = new PrefixedLocalStorage('a');
+        storageB = new PrefixedLocalStorage('b');
+      });
+
+      afterEach(() => {
+        storageA.clear();
+        storageB.clear();
+      });
+
+      it('can set item', () => {
+        storageA.setItem('test', 'foo');
+        storageB.setItem('test', 'bar')
+
+        // Ensure storage objects can read keys.
+        assert.strictEqual(storageA.getItem('test'), 'foo');
+        assert.strictEqual(storageB.getItem('test'), 'bar');
+
+        // Ensure keys have proper prefixes.
+        assert.strictEqual(localStorage.getItem('a-test'), 'foo');
+        assert.strictEqual(localStorage.getItem('b-test'), 'bar');
+      });
+
+      it('can be cleared', () => {
+        storageA.setItem('test', 'foo');
+        storageB.setItem('test', 'bar')
+
+        storageA.clear();
+
+        // Ensure storageA is cleared, but not storageB.
+        assert.isNull(storageA.getItem('test'));
+        assert.strictEqual(storageB.getItem('test'), 'bar');
+      });
+
+      it('can remove item', () => {
+        storageA.setItem('test', 'foo');
+        storageB.setItem('test', 'bar')
+
+        storageB.removeItem('test');
+
+        // Ensure storageB is cleared, but not storageA.
+        assert.strictEqual(storageA.getItem('test'), 'foo');
+        assert.isNull(storageB.getItem('test'));
+      });
     });
   });
 });

@@ -1,6 +1,6 @@
 const $ = require('cash-dom');
 const debug = require('debug')('ug:view');
-const runtime = require('./runtime');
+const Runtime = require('./runtime');
 
 
 const RE_SCRIPT = /<script[^>]*>(.*?)<\/script>/gis;
@@ -9,7 +9,7 @@ const RE_URL = /(\S+:\/\/\S+?)\//;
 
 // Attempt to set up a safe environment.
 const PREAMBLE = `
-var [document, window, ug] = arguments;
+var [document, window, localStorage, ug] = arguments;
 window.top = window.parent = {};
 `;
 const RUNTIME = `/dist/js/runtime.js`;
@@ -80,14 +80,8 @@ function absURL(path) {
   return `${m[1]}${path}`;
 }
 
-function execute(html, scripts, sb, rt) {
-  if (typeof(sb) === 'object') {
-    rt = sb;
-    sb = true;
-  }
-  rt = rt || runtime;
-
-  debug('Creating host iframe, sandbox: %s, runtime: %O.', sb, rt);
+function execute(html, scripts, sandbox, runtime, storage) {
+  debug('Creating host iframe, sandbox: %s, runtime: %O, storage: %O.', sandbox, runtime, storage);
 
   const frame = $('<iframe id="host">');
   frame.appendTo($('body'));
@@ -97,7 +91,7 @@ function execute(html, scripts, sb, rt) {
   doc.write(html);
 
   // Sandbox AFTER making our modifications, we can be more restrictive.
-  if (sb) {
+  if (sandbox) {
     debug('Sandboxing iframe: %s', SANDBOX_ARGS);
     frame.attr('sandbox', SANDBOX_ARGS);
   }
@@ -106,7 +100,7 @@ function execute(html, scripts, sb, rt) {
   frame.show();
   debug('Executing %i scripts.', scripts.length);
   for (var i = 0; i < scripts.length; i++) {
-    F(PREAMBLE + scripts[i])(doc, win, rt);
+    F(PREAMBLE + scripts[i])(doc, win, storage, runtime);
   }
   doc.close();
 }
@@ -117,13 +111,14 @@ function render(server) {
 
   let scripts;
   const app = server.app;
+  const runtime = new Runtime(server);
   document.title = `Web Underground :: view :: ${app.fields.name}`;
 
   debug('Reading index %s', app.fields.index);
   app.readFile(app.fields.index)
     .then((body) => {
       [body, scripts] = parseHtml(body);
-      execute(body, scripts, false);
+      execute(body, scripts, true, runtime, server.storage);
     })
     .catch(debug);
 }
