@@ -85,6 +85,7 @@ function execute(html, scripts, sb, rt) {
     rt = sb;
     sb = true;
   }
+  if (typeof(sb) === 'undefined') sb = true;
   rt = rt || runtime;
 
   debug('Creating host iframe, sandbox: %s, runtime: %O.', sb, rt);
