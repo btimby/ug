@@ -16,8 +16,9 @@ const TRACKERS = [
 
 
 class PrefixedStorage {
-  constructor(prefix) {
+  constructor(backend, prefix) {
     debug('Setting up storage with prefix %s', prefix);
+    this.backend = backend;
     this.prefix = prefix;
   }
 
@@ -26,15 +27,22 @@ class PrefixedStorage {
   }
 
   setItem(key, value) {
-    this.backend.setItem(this._makeKey(key), value);
+    key = this._makeKey(key);
+    debug('Setting: %s to %s', key, value);
+    this.backend.setItem(key, value);
   }
 
   getItem(key) {
-    return this.backend.getItem(this._makeKey(key));
+    key = this._makeKey(key);
+    const value = this.backend.getItem(key);
+    debug('Read: %s from %s', value, key);
+    return value;
   }
 
   removeItem(key) {
-    this.backend.removeItem(this._makeKey(key));
+    key = this._makeKey(key);
+    debug('Removing: %s', key);
+    this.backend.removeItem(key);
   }
 
   clear() {
@@ -45,23 +53,28 @@ class PrefixedStorage {
     for (let i = 0; i < localStorage.length; i++) {
       const key = this.backend.key(i);
 
-      if (key.startsWith(`${this.prefix}-`)) {
+      if (key.startsWith(`${this.prefix}:`)) {
         toRemove.push(key);
       }
     }
 
     for (let i = 0; i < toRemove.length; i++) {
+      debug('Clearing %s', toRemove[i]);
       this.backend.removeItem(toRemove[i]);
     }
   }
 }
 
 class PrefixedLocalStorage extends PrefixedStorage {
-  backend = localStorage;
+  constructor(prefix) {
+    super(localStorage, prefix);
+  }
 }
 
 class PrefixedSessionStorage extends PrefixedStorage {
-  backend = sessionStorage;
+  constructor(prefix) {
+    super(sessionStorage, prefix);
+  }
 }
 
 class Server extends EventEmitter {

@@ -127,8 +127,8 @@ describe('engine.js', () => {
         assert.strictEqual(storageB.getItem('test'), 'bar');
 
         // Ensure keys have proper prefixes.
-        assert.strictEqual(localStorage.getItem('a-test'), 'foo');
-        assert.strictEqual(localStorage.getItem('b-test'), 'bar');
+        assert.strictEqual(localStorage.getItem('a:test'), 'foo');
+        assert.strictEqual(localStorage.getItem('b:test'), 'bar');
       });
 
       it('can be cleared', () => {
