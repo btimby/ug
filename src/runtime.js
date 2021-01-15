@@ -4,7 +4,6 @@ This script is injected into the iframe that hosts an application.
 It exposes an API that the application can use.
 */
 
-const $ = require('cash-dom');
 const debug = require('debug')('ug:runtime');
 const { PrefixedLocalStorage, PrefixedSessionStorage } = require("./engine");
 
@@ -26,10 +25,6 @@ class Runtime {
     this.sandbox = sandbox;
     this.localStorage = new PrefixedLocalStorage(prefix);
     this.sessionStorage = new PrefixedSessionStorage(prefix);
-  }
-
-  execute(html, scripts) {
-    console.log('foo');
   }
 
   install(window, document) {
@@ -63,6 +58,12 @@ class Runtime {
     
         const win = iframe.contentWindow, doc = win.document, F = win.Function;
     
+        // Sandbox AFTER making our modifications, we can be more restrictive.
+        if (this.sandbox) {
+          debug('Sandboxing iframe: %s', SANDBOX_ARGS);
+          iframe.setAttribute('sandbox', SANDBOX_ARGS);
+        }
+
         // Wait for iframe to load remote resources. Otherwise our scripts run before potential
         // dependencies are available.
         iframe.addEventListener('load', () => {
@@ -77,12 +78,6 @@ class Runtime {
         debug('Writing HTML.');
         doc.write(html);
         doc.close();
-    
-        // Sandbox AFTER making our modifications, we can be more restrictive.
-        if (this.sandbox) {
-          debug('Sandboxing iframe: %s', SANDBOX_ARGS);
-          iframe.setAttribute('sandbox', SANDBOX_ARGS);
-        }
       } catch (e) {
         reject(e);
       }
@@ -90,7 +85,13 @@ class Runtime {
   }
 
   destroy() {
-    $('#host').remove();
+    debug('Destroying application.')
+    const iframe = document.getElementById('host');
+
+    if (iframe) {
+      debug('Removing host iframe.');
+      iframe.remove();
+    }
   }
 
   ping() {
