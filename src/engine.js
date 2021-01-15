@@ -22,7 +22,7 @@ class PrefixedStorage {
   }
 
   _makeKey(key) {
-    return `${this.prefix}-${key}`;
+    return `${this.prefix}:${key}`;
   }
 
   setItem(key, value) {
