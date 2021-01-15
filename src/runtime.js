@@ -10,9 +10,11 @@ const { PrefixedLocalStorage, PrefixedSessionStorage } = require("./engine");
 
 // Attempt to set up a safe environment.
 const PREAMBLE = `
+// Set up.
 let [window, document, runtime] = arguments;
 window.top = window.parent = {};
 runtime.install(window, document);
+// Clean up.
 delete runtime;
 `;
 const SANDBOX_ARGS = 'allow-forms allow-popups allow-modals allow-scripts';
