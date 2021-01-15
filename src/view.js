@@ -3,8 +3,8 @@ const debug = require('debug')('ug:view');
 const { Runtime } = require('./runtime');
 
 
-const RE_SCRIPT = /<script[^>]*>(.*?)<\/script>/gi;
-const RE_BODY = /<html[^>]*>(.*?)<\/html>/i;
+const RE_SCRIPT = /<script[^>]*>(.*?)<\/script>/gis;
+const RE_BODY = /<html[^>]*>(.*?)<\/html>/is;
 const RE_URL = /(\S+:\/\/\S+?)\//;
 
 
