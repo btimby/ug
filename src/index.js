@@ -14,8 +14,8 @@ const RE_INDEX = /index.html?/gi;
 
 
 class Application extends EventEmitter {
-  isSeeding = false;
-  isServing = false;
+//  isSeeding = false;
+//  isServing = false;
 
   /* Represents an application. */
   constructor(fields) {

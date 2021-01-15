@@ -7,6 +7,6 @@ addons:
 install:
   - npm install
   - make dist
-  - make vendor
+  - make todo/app.pem
 script:
   - make test
