@@ -13,6 +13,7 @@ const PREAMBLE = `
 let [window, document, runtime] = arguments;
 window.top = window.parent = {};
 runtime.install(window, document);
+delete runtime;
 `;
 const SANDBOX_ARGS = 'allow-forms allow-popups allow-modals allow-scripts';
 
