@@ -3,7 +3,7 @@ node_js:
   - 12
 addons:
   firefox: 84
-  chrome: 87
+  chrome: stable
 install:
   - npm install
 script:

@@ -4,7 +4,7 @@
   "description": "Web Underground.",
   "main": "index.js",
   "scripts": {
-    "test-browser": "karma start --single-run --browsers ChromeHeadless,FirefoxHeadless karma.config.js",
+    "test-browser": "karma start --single-run --browsers ChromeHeadlessNoSandbox,FirefoxHeadless karma.config.js",
     "test-node": "mocha --recursive --full-trace tests/node/**/test_*.js",
     "debug-node": "mocha inspect --recursive --full-trace tests/node/**/test_*.js",
     "vendor": "for file in webextension-polyfill/dist/browser-polyfill.min.js; do cp node_modules/${file} dist/js/vendor/$(basename ${file}); done",

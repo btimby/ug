@@ -25,6 +25,11 @@ module.exports = function(config) {
         flags: ['-headless'],
         displayName: 'FirefoxHeadless',
       },
+      ChromeHeadlessNoSandbox: {
+        base: 'ChromeHeadless',
+        flags: ['--no-sandbox'],
+        displayName: 'ChromeHeadlessNoSandbox',
+      },
     },
     browserify: {
       debug: true,
