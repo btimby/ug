@@ -287,8 +287,8 @@ class ParsedApplication extends Application {
 }
 
 class PackageApplication extends Application {
-  isSeeding = true;
-  isServing = true;
+//  isSeeding = true;
+//  isServing = true;
 
   constructor(zip, fields) {
     super(fields);
@@ -343,8 +343,8 @@ class PackageApplication extends Application {
 }
 
 class TorrentApplication extends Application {
-  isSeeding = true;
-  isServing = false;
+//  isSeeding = true;
+  //isServing = false;
 
   constructor(torrent, fields) {
     super(fields);

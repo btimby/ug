@@ -4,9 +4,5 @@ node_js:
 addons:
   firefox: 84
   chrome: stable
-install:
-  - npm install
-  - make dist
-  - make todo/app.pem
 script:
   - make test

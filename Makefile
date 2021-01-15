@@ -47,8 +47,11 @@ debug-node:
 .PHONY: test-all
 test-all: test-browser test-node
 
+node_modules: package-lock.json
+	npm i
+
 .PHONY: test
-test:
+test: node_modules
 	$(MAKE) -k test-all
 
 .PHONY: set-version
