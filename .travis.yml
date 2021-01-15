@@ -6,5 +6,7 @@ addons:
   chrome: stable
 install:
   - npm install
+  - make dist
+  - make vendor
 script:
   - make test

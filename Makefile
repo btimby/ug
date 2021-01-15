@@ -16,6 +16,7 @@ vendorclean:
 
 .PHONY: vendor
 vendor: vendorclean
+	mkdir -p dist/js/vendor
 	npm run vendor
 
 .PHONY: watch
