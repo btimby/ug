@@ -47,8 +47,9 @@ debug-node:
 .PHONY: test-all
 test-all: test-browser test-node
 
-node_modules: package-lock.json
+node_modules: package.json
 	npm i
+	touch node_modules
 
 .PHONY: test
 test: node_modules
