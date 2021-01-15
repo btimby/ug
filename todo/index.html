@@ -6,26 +6,18 @@
 </head>
 <body>
   <div id="app">
-    <img src="https://vuejs.org/images/logo.png" alt="Vue logo">
-    <h1>{{ greeting }}</h1>
+    <img src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fi.imgur.com%2FOvMZBs9.jpg&f=1&nofb=1" alt="TODO logo">
+    <h2>{{ greeting }}</h2>
+    <input
+      v-model="todo.title"
+      type="text"
+      name="title"
+    />
+    <button @click="addTodo" title="Add a new todo item">Add</button>
     <ul>
-      <li>
-        To learn more about Vue, visit
-        <a :href="docsURL" target="_blank">
-          {{ humanizeURL(docsURL) }}
-        </a>
-      </li>
-      <li>
-        For live help with simple questions, check out
-        <a :href="discordURL" target="_blank">
-          the Discord chat
-        </a>
-      </li>
-      <li>
-        For more complex questions, post to
-        <a :href="forumURL" target="_blank">
-          the forum
-        </a>
+      <li v-for="todo in todos" :key="todo.id">
+        {{ todo.title }}
+        <button @click="delTodo(todo.id)" title="Delete todo item.">Del</button>
       </li>
     </ul>
   </div>
@@ -33,19 +25,53 @@
   <script>
     var app = new Vue({
       el: '#app',
-      data: {
-        greeting: 'Welcome to the Web Underground!',
-        docsURL: 'http://vuejs.org/guide/',
-        discordURL: 'https://chat.vuejs.org',
-        forumURL: 'http://forum.vuejs.org/'
-      },
-      methods: {
-        humanizeURL: function (url) {
-          return url
-            .replace(/^https?:\/\//, '')
-            .replace(/\/$/, '')
+
+      data() {
+        return {
+          greeting: 'Welcome to the Web Underground!',
+          todo: {
+            title: null,
+          },
+          todos: [],
         }
-      }
+      },
+
+      mounted() {
+        this.getTodos();
+      },
+
+      watch: {
+        todos: {
+          handler() {
+              console.log('Storing todo items.');
+              localStorage.setItem('todos', JSON.stringify(this.todos));
+            },
+          deep: true,
+        },
+      },
+
+      methods: {
+        getTodos() {
+          console.log('Loading todo items.');
+          const todos = JSON.parse(localStorage.getItem('todos'));
+          this.todos = todos || [];
+        },
+
+        addTodo() {
+          this.todos.push({
+            id: Math.random().toString().substr(2, 8),
+            title: this.todo.title,
+          });
+          this.todo = {
+            title: null,
+          };
+        },
+
+        delTodo(id) {
+          this.todos = this.todos.filter((obj) => (obj.id !== id));
+        },
+      },
+
     })
   </script>
 </body>
