@@ -53,6 +53,7 @@ node_modules: package.json
 
 .PHONY: test
 test: node_modules
+	# -k runs all targets (even if one errors) and reports overall pass / fail.
 	$(MAKE) -k test-all
 
 .PHONY: set-version

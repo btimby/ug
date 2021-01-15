@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/btimby/ug.svg?branch=master)](https://travis-ci.com/btimby/ug)
+
 # Web Underground
 
 Web Underground is a browser extension and toolkit that allows anyone with a compatible web browser to host a website from their computer.
