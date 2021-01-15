@@ -4,3 +4,7 @@ node_js:
 addons:
   firefox: 84
   chrome: 87
+install:
+  - npm install
+script:
+  - make test
