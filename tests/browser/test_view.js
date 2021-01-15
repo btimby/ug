@@ -119,30 +119,42 @@ describe('view.js', () => {
       runtime.destroy();
     });
 
-    it('isolates parent window', () => {
-      runtime.execute('<h1>Hi</h1>', [
-        'document.foo = window.parent.foo = window.foo = "foo"',
-      ]);
+    it('isolates parent window', (done) => {
+      runtime
+        .execute('<h1>Hi</h1>', [
+          'document.foo = window.parent.foo = window.foo = "foo"',
+        ])
+        .then(() => {
+          const frame = document.getElementById('host');
 
-      const frame = document.getElementById('host');
-      // Ensure script can access it's own document, window.
-      assert.strictEqual(frame.contentWindow.foo, 'foo');
-      assert.strictEqual(frame.contentDocument.foo, 'foo');
-
-      // But not ours.
-      assert.isUndefined(window.foo);
-      assert.isUndefined(document.foo);
+          // Ensure script can access it's own document, window.
+          assert.strictEqual(frame.contentWindow.foo, 'foo');
+          assert.strictEqual(frame.contentDocument.foo, 'foo');
+    
+          // But not ours.
+          assert.isUndefined(window.foo);
+          assert.isUndefined(document.foo);
+    
+          done();
+        })
+        .catch(done);
     });
 
-    it('injects runtime', () => {
+    it('injects runtime', (done) => {
       // A runtime for our test run.
-      runtime.execute('<h1>Hi</h1>', [
-        'window.ping = ug.ping();',
-      ]);
+      runtime
+        .execute('<h1>Hi</h1>', [
+          'window.ping = ug.ping();',
+        ])
+        .then(() => {
+          const frame = document.getElementById('host');
 
-      const frame = document.getElementById('host');
-      // Ensure script can access it's own document, window.
-      assert.strictEqual(frame.contentWindow.ping, 'pong');
+          // Ensure script can access it's own document, window.
+          assert.strictEqual(frame.contentWindow.ping, 'pong');
+
+          done();
+        })
+        .catch(done);
     });
   });
 });

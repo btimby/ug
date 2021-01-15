@@ -84,8 +84,8 @@ function render(server) {
   debug('Reading index %s', app.fields.index);
   app.readFile(app.fields.index)
     .then((body) => {
-      [body, scripts] = parseHtml(body);
-      runtime.execute(scripts);
+      [html, scripts] = parseHtml(body);
+      runtime.execute(html, scripts);
     })
     .catch(debug);
 }

@@ -29,28 +29,7 @@ class Runtime {
   }
 
   execute(html, scripts) {
-    debug('Creating host iframe, sandbox: %s, runtime: %O.', this.sandbox, this);
-
-    const frame = $('<iframe id="host">');
-    frame.appendTo($('body'));
-    const doc = frame[0].contentDocument, win = frame[0].contentWindow, F = win.Function;
-
-    debug('Writing HTML.');
-    doc.write(html);
-
-    // Sandbox AFTER making our modifications, we can be more restrictive.
-    if (this.sandbox) {
-      debug('Sandboxing iframe: %s', SANDBOX_ARGS);
-      frame.attr('sandbox', SANDBOX_ARGS);
-    }
-
-    // Execute scripts in context of iframe.
-    frame.show();
-    debug('Executing %i scripts.', scripts.length);
-    for (var i = 0; i < scripts.length; i++) {
-      F(PREAMBLE + scripts[i])(win, doc, this);
-    }
-    doc.close();
+    console.log('foo');
   }
 
   install(window, document) {
@@ -71,6 +50,43 @@ class Runtime {
     window.ug = {
       ping: this.ping,
     };
+  }
+
+  execute(html, scripts) {
+    debug('Creating host iframe, sandbox: %s, runtime: %O.', this.sandbox, this);
+
+    return new Promise((resolve, reject) => {
+      try {
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('id', 'host');
+        document.body.appendChild(iframe);
+    
+        const win = iframe.contentWindow, doc = win.document, F = win.Function;
+    
+        // Wait for iframe to load remote resources. Otherwise our scripts run before potential
+        // dependencies are available.
+        iframe.addEventListener('load', () => {
+          // Execute scripts in context of iframe.
+          debug('Executing %i scripts.', scripts.length);
+          for (var i = 0; i < scripts.length; i++) {
+            F(PREAMBLE + scripts[i])(win, doc, this);
+          }
+          resolve();
+        });
+    
+        debug('Writing HTML.');
+        doc.write(html);
+        doc.close();
+    
+        // Sandbox AFTER making our modifications, we can be more restrictive.
+        if (this.sandbox) {
+          debug('Sandboxing iframe: %s', SANDBOX_ARGS);
+          iframe.setAttribute('sandbox', SANDBOX_ARGS);
+        }
+      } catch (e) {
+        reject(e);
+      }
+    });
   }
 
   destroy() {
