@@ -1,9 +1,23 @@
-form.inline {
-    display: flex;
-    flex-flow: row wrap;
-    align-items: center;
+input, button {
+    display: inline;
 }
 
-#serve {
+input {
+    width: 240px;
+}
+
+.invalid {
+    background-color: tomato;
+}
+
+body {
     font-size: 12px;
+}
+
+div {
+    width: 350px;
+}
+
+#readme {
+    display: none;
 }

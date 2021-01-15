@@ -7,10 +7,19 @@
     </head>
     <body>
         <form class="inline">
-            <input id="url" type='text' placeholder="url" autofocus/>
-            <button id="go" name="go">go</button>
+            <div id="container">
+                <input id="url" type='text' placeholder="enter url" autofocus/>
+                <button id="go" name="go">go</button>
+            </div>
         </form>
-        <a href="#" id="serve">Serve application</a>
+        <a href="#" id="serve">Serve application</a> |
+        <a href="#" id="help">Help</a>
+        <div id="readme">
+            <h4>Loading a site.</h4>
+            <p>Enter a URL above, it should start with web+ug:// then click go.</p>
+            <h4>Creating a site.</h4>
+            <p>Click "Serve application" above and following the instructions on the resulting page.</p>
+        </div>
     </body>
 
     <!-- Included here to avoid loading during tests // -->
