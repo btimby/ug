@@ -52,7 +52,7 @@ node_modules: package.json
 	touch node_modules
 
 .PHONY: test
-test: node_modules
+test: node_modules todo/app.pem
 	# -k runs all targets (even if one errors) and reports overall pass / fail.
 	$(MAKE) -k test-all
 
