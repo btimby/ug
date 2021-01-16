@@ -37,8 +37,8 @@ function main(args) {
         .serve(fs.readFileSync(appPath))
         .then((server) => {
           console.log(`Now serving ${server.app.fields.name}: web+ug://${server.id}`);
-          server.on('log', console.log);
-          server.on('stats', console.log);
+          server.on('log', log);
+          server.on('stats', log);
         })
         .catch(console.log)
       break;

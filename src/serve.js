@@ -103,6 +103,7 @@ function setup(server) {
     $('#downspeed').text(stats.downloadSpeed);
     $('#downmax').text(stats.maxDownloadSpeed);
   });
+}
 
 function stop() {
   if (!RUNNING_SERVER) {
@@ -157,7 +158,7 @@ function load() {
     .catch(log);
 }
 
-if (document) {
+if (typeof(document) !== 'undefined') {
   $(document).ready(() => {
     $('#app').on('change', load);
     $('#stop').on('click', stop);

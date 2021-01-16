@@ -1,6 +1,6 @@
 const fs = require('fs');
 const { assert } = require('chai');
-const { compile, extract } = require('../../src/index');
+const { compile, extract, isBrowser, isNode, isExtension } = require('../../src/index');
 
 
 describe('index.js', () => {
@@ -36,6 +36,24 @@ describe('index.js', () => {
             .catch(done);
         })
         .catch(done);
+    });
+  });
+
+  describe('#iBrowser()', () => {
+    it('returns false under node', () => {
+      assert.isFalse(isBrowser());
+    });
+  });
+
+  describe('#isNode()', () => {
+    it('returns true under node', () => {
+      assert.isTrue(isNode());
+    });
+  });
+
+  describe('#isExtension()', () => {
+    it('returns false under node', () => {
+      assert.isFalse(isExtension());
     });
   });
 });

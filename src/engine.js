@@ -262,7 +262,7 @@ class Engine extends EventEmitter {
           for (let i in files) {
             let fObj;
             if (isBrowser()) {
-              fObj = new File([files[i].body], files[i].name));
+              fObj = new File([files[i].body], files[i].name);
             } else {
               fObj = Buffer.from(files[i].body);
               fObj.name = files[i].name;
