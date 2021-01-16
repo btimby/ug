@@ -18,8 +18,8 @@ function _doPromise(name, ...args) {
 }
 
 window.bus = {
-  createServer(file) {
-    return _doPromise('createServer', file);
+  serve(file) {
+    return _doPromise('serve', file);
   },
 
   fetch(file) {
