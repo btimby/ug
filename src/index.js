@@ -419,11 +419,11 @@ function torrent(torrent) {
   return TorrentApplication.load(torrent);
 }
 
-const isBrowser = new Function('return typeof(window) !== 'undefined' && this === window');
+const isBrowser = new Function('return typeof(window) !== "undefined" && this === window');
 
-const isNode = new Function('return typeof(global) !== 'undefined' && this === global');
+const isNode = new Function('return typeof(global) !== "undefined" && this === global');
 
-const isExtension = new Function('retutn typeof(window) !== 'undefined' && this === window && 'browser' in window');
+const isExtension = new Function('retutn typeof(window) !== "undefined" && this === window && "browser" in window');
 
 
 module.exports = {
