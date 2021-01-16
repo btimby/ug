@@ -4,8 +4,7 @@ const LSChunkStore = require('ls-chunk-store');
 const createTorrent = require('create-torrent');
 const debug = require('debug')('ug:engine');
 const Bugout = require('bugout');
-const binary = require('bops');
-const { TorrentApplication, PackageApplication } = require('./index');
+const { TorrentApplication, PackageApplication, isBrowser } = require('./index');
 
 
 const TRACKERS = [
@@ -246,7 +245,7 @@ class Engine extends EventEmitter {
       if (isBrowser()) {
         appJson = new File([JSON.stringify(app._manifest())], 'app.json');
       } else {
-        appJson = binary.from(JSON.stringify(app._manifest()));
+        appJson = Buffer.from(JSON.stringify(app._manifest()));
         appJson.name = 'app.json';
       }
       const fileObjs = [
@@ -265,7 +264,7 @@ class Engine extends EventEmitter {
             if (isBrowser()) {
               fObj = new File([files[i].body], files[i].name));
             } else {
-              fObj = binary.from(files[i].body);
+              fObj = Buffer.from(files[i].body);
               fObj.name = files[i].name;
             }
             fileObjs.push(fObj);
