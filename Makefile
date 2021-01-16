@@ -33,7 +33,7 @@ todo.app: todo/app.pem todo/app.json todo/index.html
 todo: todo.app
 
 .PHONY: serve-todo
-serve-todo: dist
+serve-todo: dist todo
 	npm run serve-todo
 
 .PHONY: test-browser
