@@ -14,6 +14,7 @@
   "author": "Ben Timby <btimby@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "bops": "^1.0.1",
     "bugout": "git+https://github.com/btimby/bugout.git#opts.torrent",
     "cash-dom": "^8.1.0",
     "crypto-js": "^4.0.0",
@@ -25,7 +26,8 @@
     "ls-chunk-store": "^2.0.0",
     "tweetnacl": "^1.0.3",
     "webextension-polyfill": "^0.7.0",
-    "webtorrent": "^0.112.0"
+    "webtorrent": "^0.112.0",
+    "webtorrent-hybrid": "^4.0.3"
   },
   "devDependencies": {
     "browserify": "^17.0.0",

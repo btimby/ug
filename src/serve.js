@@ -104,47 +104,6 @@ function setup(server) {
     $('#downmax').text(stats.maxDownloadSpeed);
   });
 
-/*  setInterval(() => {
-    window.bus
-      .stats()
-      .then((stats) => {
-        // Handle drop-down list.
-        const serving = $('<optgroup label="Serving"/>');
-        const seeding = $('<optgroup label="Seeding"/>');
-  
-        for (let st in stats) {
-          const opt = $(`<option value=${st.id}">${st.name}</option>`);
-  
-          if (st.isServing) {
-            opt.appendTo(serving);
-          } else {
-            opt.appendTo(seeding);
-          }
-        }
-  
-        if (serving.children().length || seeding.children().length) {
-          $('#servers')
-            .empty();
-        }
-
-        if (serving.children().length) {
-          $('#servers')
-            .append(serving)
-            .show();
-        }
-  
-        if (seeding.children().length) {
-          $('#servers')
-            .append(seeding)
-            .show();
-        }
-
-        // Torrent specific stats.
-        stats = stats[torrent.infoHash];
-      });
-  }, 1000);*/
-}
-
 function stop() {
   if (!RUNNING_SERVER) {
     return;
@@ -191,7 +150,7 @@ function load() {
   log('Loading {1} byte application from {0}.', file.name, file.size);
 
   window.bus
-    .createServer(file)
+    .serve(file)
     .then((server) => {
       setup(server);
     })

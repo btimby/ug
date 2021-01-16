@@ -1,4 +1,4 @@
-const { parseHtml, parseQs, absURL } = require('../../src/view');
+const { parseHtml, parseQs } = require('../../src/view');
 const { Runtime } = require('../../src/runtime');
 
 
@@ -92,15 +92,6 @@ describe('view.js', () => {
           assert.strictEqual(key, obj[key]);
         })
       }
-    });
-  });
-
-  describe('#absURL()', () => {
-    it('can create an absolute URL.', () => {
-      const url = absURL('/dist/js/runtime.js');
-
-      // NOTE: the base URL may change if karma.config.js is modified.
-      assert.strictEqual(url, 'http://localhost:9876/dist/js/runtime.js');
     });
   });
 

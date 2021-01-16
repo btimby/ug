@@ -4,6 +4,7 @@ const LSChunkStore = require('ls-chunk-store');
 const createTorrent = require('create-torrent');
 const debug = require('debug')('ug:engine');
 const Bugout = require('bugout');
+const binary = require('bops');
 const { TorrentApplication, PackageApplication } = require('./index');
 
 
@@ -241,8 +242,10 @@ class Engine extends EventEmitter {
     debug('Getting or creating torrent for application.');
 
     return new Promise((resolve, reject) => {
+      const appJson = binary.from(JSON.stringify(app._manifest()));
+      appJson.name = 'app.json';
       const fileObjs = [
-        new File([JSON.stringify(app._manifest())], 'app.json'),
+        appJson,
       ];
       const opts = {
         name: `${app.fields.name}-${app.fields.version}`,
@@ -253,7 +256,9 @@ class Engine extends EventEmitter {
       app.readFiles()
         .then((files) => {
           for (let i in files) {
-            fileObjs.push(new File([files[i].body], files[i].name));
+            const fObj = binary.from(files[i].body);
+            fObj.name = files[i].name;
+            fileObjs.push(fObj);
           }
           debug('Torrent contains: %O', fileObjs);
 
@@ -313,7 +318,7 @@ class Engine extends EventEmitter {
     return server;
   }
 
-  createServer(file) {
+  serve(file) {
     /* Adds a new server for application bundle. */
     debug('Creating server from file.');
 
@@ -455,7 +460,7 @@ function _start() {
 }
 
 // Only run in browser.
-if ('browser' in window) {
+if (typeof(window) !== 'undefined' && 'browser' in window) {
   // This does not currently work, see:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=64100&q=registerprotocolhandler%20extension&can=2
   const url = chrome.runtime.getURL('/dist/html/view.html?url=%s');

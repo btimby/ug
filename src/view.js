@@ -61,17 +61,6 @@ function parseHtml(body, F) {
   return [(m) ? m[1] : body, scripts];
 }
 
-function absURL(path) {
-  const m = window.location.href.match(RE_URL);
-  if (!m) {
-    throw new Error('Could not parse URL');
-  }
-
-  if (!path.startsWith('/')) path = `/${path}`;
-
-  return `${m[1]}${path}`;
-}
-
 function render(server) {
   /* Render HTML and execute scripts. */
   debug('Rendering application.');
@@ -119,5 +108,4 @@ if (document && 'browser' in window) {
 module.exports = {
   parseHtml,
   parseQs,
-  absURL,
 };

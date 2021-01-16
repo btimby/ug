@@ -76,7 +76,7 @@ describe('engine.js', () => {
 
     it('can load an application', (done) => {
       engine
-        .createServer(atob(APP))
+        .serve(atob(APP))
         .then((server) => {
           // Ensure a torrent and bugout instance were created.
           assert(server.torrent);
