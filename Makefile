@@ -27,10 +27,14 @@ todo/app.pem:
 	openssl genrsa -out todo/app.pem
 
 todo.app: todo/app.pem todo/app.json todo/index.html
-	node src/cli.js compile todo/app.json
+	npm run todo
 
 .PHONY: todo
 todo: todo.app
+
+.PHONY: serve-todo
+serve-todo:
+	npm run serve-todo
 
 .PHONY: test-browser
 test-browser: dist

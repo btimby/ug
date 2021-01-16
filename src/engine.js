@@ -4,7 +4,7 @@ const LSChunkStore = require('ls-chunk-store');
 const createTorrent = require('create-torrent');
 const debug = require('debug')('ug:engine');
 const Bugout = require('bugout');
-const { TorrentApplication, PackageApplication, isBrowser } = require('./index');
+const { TorrentApplication, PackageApplication, isBrowser, isExtension } = require('./index');
 
 
 const TRACKERS = [
@@ -468,8 +468,7 @@ function _start() {
   // TODO: load past applications from localStorage and serve them.
 }
 
-// Only run in browser.
-if (typeof(window) !== 'undefined' && 'browser' in window) {
+if (isExtension()) {
   // This does not currently work, see:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=64100&q=registerprotocolhandler%20extension&can=2
   const url = chrome.runtime.getURL('/dist/html/view.html?url=%s');
