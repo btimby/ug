@@ -242,8 +242,13 @@ class Engine extends EventEmitter {
     debug('Getting or creating torrent for application.');
 
     return new Promise((resolve, reject) => {
-      const appJson = binary.from(JSON.stringify(app._manifest()));
-      appJson.name = 'app.json';
+      let appJson;
+      if (isBrowser()) {
+        appJson = new File([JSON.stringify(app._manifest())], 'app.json');
+      } else {
+        appJson = binary.from(JSON.stringify(app._manifest()));
+        appJson.name = 'app.json';
+      }
       const fileObjs = [
         appJson,
       ];
@@ -256,8 +261,13 @@ class Engine extends EventEmitter {
       app.readFiles()
         .then((files) => {
           for (let i in files) {
-            const fObj = binary.from(files[i].body);
-            fObj.name = files[i].name;
+            let fObj;
+            if (isBrowser()) {
+              fObj = new File([files[i].body], files[i].name));
+            } else {
+              fObj = binary.from(files[i].body);
+              fObj.name = files[i].name;
+            }
             fileObjs.push(fObj);
           }
           debug('Torrent contains: %O', fileObjs);
