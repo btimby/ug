@@ -7,7 +7,7 @@ distclean:
 	rm -rf dist/js/*.js
 
 .PHONY: dist
-dist: distclean vendor
+dist: node_modules distclean vendor
 	npm run dist
 
 .PHONY: vendorclean
