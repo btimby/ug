@@ -17,6 +17,18 @@
     "default_title": "UG - Open site",
     "default_popup": "/dist/html/popup.html"
   },
+  "options_ui": {
+    "page": "dist/thml/options.html",
+  },
+  "permissions": [
+    "storage"
+  ],
+  "browser_specific_settings": {
+    "gecko":
+    {
+      "id": "ug@mozilla.org"
+    }
+  },
   "protocol_handlers": [
     {
       "protocol": "web+ug",
