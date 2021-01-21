@@ -18,7 +18,8 @@
     "default_popup": "/dist/html/popup.html"
   },
   "options_ui": {
-    "page": "dist/thml/options.html",
+    "page": "dist/html/options.html",
+    "browser_style": true
   },
   "permissions": [
     "storage"
@@ -26,7 +27,7 @@
   "browser_specific_settings": {
     "gecko":
     {
-      "id": "ug@mozilla.org"
+      "id": "{5e032df0-b611-4d22-aabc-e396d5028ae2}"
     }
   },
   "protocol_handlers": [

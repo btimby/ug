@@ -2,10 +2,37 @@
     <meta charset="utf-8">
     <head>
         <title>Web Underground :: options</title>
-        <link rel="stylesheet" href="/dist/css/index.css">
         <link rel="stylesheet" href="/dist/css/options.css">
     </head>
-    <body></body>
+
+    <body class="browser-style">
+
+        <div class="panel-section panel-section-formElements">
+            <div class="panel-formElements-item">
+                <label>Automatically seed sites?</label>
+                <input type="checkbox" id="seed"/>
+            </div>
+            <div class="panel-formElements-item">
+                <label>Seed a site for how long?</label>
+                <select class="browser-style" id="duration">
+                    <option value="4">4 hours</option>
+                    <option value="12">12 hours</option>
+                    <option value="24">24 hours</option>
+                    <option value="120">5 days</option>
+                    <option value="720">30 days</option>
+                </select>
+            </div>
+            <div class="panel-formElements-item">
+                <label>Trust the following keys.</label>
+                <textarea class="browser-style" id="trust"></textarea>
+            </div>
+            <div class="panel-formElements-item">
+                <button class="browser-style" id="save">Save</button>
+                <button class="browser-style" id="reset">Reset</button>
+            </div>
+        </div>
+
+    </body>
 
     <!-- Included here to avoid loading during tests // -->
     <script type="text/javascript" src="/dist/js/vendor/browser-polyfill.min.js"></script>
