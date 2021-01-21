@@ -1,6 +1,7 @@
 const $ = require('cash-dom');
 const JSZip = require('jszip');
 const debug = require('debug')('ug:serve');
+const { isExtension } = require('.');
 
 
 const LOG_LEVEL = {
@@ -158,7 +159,7 @@ function load() {
     .catch(log);
 }
 
-if (typeof(document) !== 'undefined') {
+if (isExtension()) {
   $(document).ready(() => {
     $('#app').on('change', load);
     $('#stop').on('click', stop);

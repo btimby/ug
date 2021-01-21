@@ -1,5 +1,6 @@
 const $ = require('cash-dom');
 const debug = require('debug')('ug:options');
+const { isExtension } = require('./index');
 
 const DEFAULTS = {
   seed: true,
@@ -80,6 +81,10 @@ function reset() {
 }
 
 
-$(document).ready(load);
-$('#save').on('click', save);
-$('#reset').on('click', reset);
+if (isExtension()) {
+  $(document).ready(() => { 
+    load();
+    $('#save').on('click', save);
+    $('#reset').on('click', reset);
+  });
+}

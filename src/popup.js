@@ -1,5 +1,6 @@
 const $ = require('cash-dom');
 const debug = require('debug')('ug:popup');
+const { isExtension } = require('./index');
 
 
 function openView() {
@@ -33,7 +34,7 @@ function openServe() {
   window.close();
 }
 
-if (document) {
+if (isExtension()) {
   $(document).ready(() => {
     // Set up event handlers.
     $('#go').on('click', (ev) => {
