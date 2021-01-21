@@ -1,5 +1,5 @@
 const $ = require('cash-dom');
-const debug = require('ug:options')();
+const debug = require('debug')('ug:options');
 
 const DEFAULTS = {
   seed: true,
