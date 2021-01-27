@@ -5,14 +5,13 @@ It exposes an API that the application can use.
 */
 
 const debug = require('debug')('ug:runtime');
-const { PrefixedLocalStorage, PrefixedSessionStorage } = require("./engine");
-
+const { PrefixedLocalStorage, PrefixedSessionStorage } = require("./engine/storage");
 
 // Attempt to set up a safe environment.
 const PREAMBLE = `
 // Set up.
 let [window, document, runtime] = arguments;
-window.top = window.parent = {};
+window.bus = window.top = window.parent = {};
 runtime.install(window, document);
 // Clean up.
 delete runtime;
@@ -31,6 +30,7 @@ class Runtime {
   }
 
   install(window, document) {
+    const bugout = this.server.bugout;
     const windowAttrs = {
       // Provide prefixed storage.
       localStorage: this.localStorage,
@@ -46,7 +46,10 @@ class Runtime {
 
     // Methods exposed to scripts.
     window.ug = {
-      ping: this.ping,
+      ping: this.ping.bind(this),
+      send: bugout.send,
+      rpc: bugout.rpc,
+      on: bugout.on,
     };
   }
 
@@ -58,9 +61,9 @@ class Runtime {
         const iframe = document.createElement('iframe');
         iframe.setAttribute('id', 'host');
         document.body.appendChild(iframe);
-    
+
         const win = iframe.contentWindow, doc = win.document, F = win.Function;
-    
+
         // Sandbox AFTER making our modifications, we can be more restrictive.
         if (this.sandbox) {
           debug('Sandboxing iframe: %s', SANDBOX_ARGS);
@@ -77,7 +80,7 @@ class Runtime {
           }
           resolve();
         });
-    
+
         debug('Writing HTML.');
         doc.write(html);
         doc.close();
@@ -97,8 +100,15 @@ class Runtime {
     }
   }
 
-  ping() {
-    return 'pong';
+  ping(callback) {
+    const bugout = this.server.bugout;
+
+    bugout.rpc('ping', {}, (result) => {
+      debug('ping result: %O', result);
+      if (typeof(callback) === 'function') {
+        callback(result);
+      }
+    });
   }
 }
 

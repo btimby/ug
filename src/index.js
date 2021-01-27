@@ -287,9 +287,6 @@ class ParsedApplication extends Application {
 }
 
 class PackageApplication extends Application {
-//  isSeeding = true;
-//  isServing = true;
-
   constructor(zip, fields) {
     super(fields);
     this.zip = zip;
@@ -342,9 +339,6 @@ class PackageApplication extends Application {
 }
 
 class TorrentApplication extends Application {
-//  isSeeding = true;
-  //isServing = false;
-
   constructor(torrent, fields) {
     super(fields);
     this.torrent = torrent;

@@ -37,6 +37,9 @@
       },
 
       mounted() {
+        window.ug.on('server', () => {
+          console.log('Server!')
+        });
         this.getTodos();
       },
 

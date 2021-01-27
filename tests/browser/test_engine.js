@@ -1,5 +1,6 @@
 const WebTorrent = require('webtorrent');
-const { Engine, PrefixedLocalStorage } = require('../../src/engine');
+const { Engine } = require('../../src/engine/index');
+const { PrefixedLocalStorage } = require('../../src/engine/storage');
 const { assert } = require('chai');
 
 const FIELDS = {
@@ -60,7 +61,7 @@ const APP = "UEsDBAoACAAAAGSqLVIAAAAAAAAAAAAAAAAIAAAAYXBwLmpzb257Im5hbWUiOiJ0b2R
             "bmRleC5odG1sUEsFBgAAAAACAAIAbgAAABAGAAAAAA==";
 
 
-describe('engine.js', () => {
+describe('engine', () => {
   describe('#Engine', () => {
     let engine, wt;
 
@@ -89,7 +90,7 @@ describe('engine.js', () => {
           assert(server.app.readFile(server.app.fields.index));
 
           // Ensure server is stored in engine.
-          assert.deepStrictEqual(Object.keys(engine.servers), [server.id]);
+          assert.deepStrictEqual(Object.keys(engine.entries), [server.id]);
 
           // Ensure wt is serving the torrent.
           assert.strictEqual(wt.torrents[0], server.torrent);
