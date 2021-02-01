@@ -101,7 +101,8 @@ describe('engine', () => {
             .then((stats) => {
               assert.deepStrictEqual(stats[server.id], server.stats);
               done();
-            });
+            })
+            .catch(done);
         })
         .catch(done);
     });
@@ -152,6 +153,19 @@ describe('engine', () => {
         // Ensure storageB is cleared, but not storageA.
         assert.strictEqual(storageA.getItem('test'), 'foo');
         assert.isNull(storageB.getItem('test'));
+      });
+
+      it('handles key() properly', () => {
+        storageA.setItem('test', 'foo');
+        storageA.setItem('quux', 'bar');
+        localStorage.setItem('test', 'baz');
+
+        // Order is not guarenteed.
+        assert.deepStrictEqual(
+          [storageA.key(0), storageA.key(1)].sort(),
+          ['quux', 'test']
+        );
+        assert.isUndefined(storageA.key(2));
       });
     });
   });

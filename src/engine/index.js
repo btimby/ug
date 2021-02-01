@@ -241,11 +241,13 @@ class Engine extends EventEmitter {
       const stats = {
         null: engine,
       };
-      const keys = Object.keys(this.servers);
+      const keys = Object.keys(this.entries);
 
       keys.forEach((key) => {
-        const server = this.get(key);
-        stats[key] = server.stats;
+        const entry = this.entries[key];
+        if (entry.server) {
+          stats[key] = entry.server.stats;
+        }
       });
 
       // NOTE: stats that are sums.

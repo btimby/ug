@@ -107,3 +107,4 @@ todo/app.pem
 todo.app
 *-ug-*.zip
 *-ui-*.xpi
+dist/*

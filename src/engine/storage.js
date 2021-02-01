@@ -25,6 +25,22 @@ class PrefixedStorage {
     return value;
   }
 
+  key(index) {
+    let pos = 0;
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = this.backend.key(i);
+
+      if (!key.startsWith(`${this.prefix}:`)) {
+        continue;
+      }
+
+      if (index == pos++) {
+        return key.substring(this.prefix.length + 1);
+      }
+    }
+  }
+
   removeItem(key) {
     key = this._makeKey(key);
     debug('Removing: %s', key);

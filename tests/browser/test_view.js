@@ -101,6 +101,10 @@ describe('view.js', () => {
     beforeEach(() => {
       const server = {
         id: 'foo',
+        send() {},
+        bugout: {
+          rpc() {},
+        },
       };
       runtime = new Runtime(server, true);
     });
@@ -135,7 +139,7 @@ describe('view.js', () => {
       // A runtime for our test run.
       runtime
         .execute('<h1>Hi</h1>', [
-          'window.ping = ug.ping();',
+          'window.ping = "pong";ug.ping();',
         ])
         .then(() => {
           const frame = document.getElementById('host');
