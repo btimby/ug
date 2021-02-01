@@ -100,15 +100,8 @@ class Runtime {
     }
   }
 
-  ping(callback) {
-    const bugout = this.server.bugout;
-
-    bugout.rpc('ping', {}, (result) => {
-      debug('ping result: %O', result);
-      if (typeof(callback) === 'function') {
-        callback(result);
-      }
-    });
+  ping() {
+    return 'pong';
   }
 }
 
