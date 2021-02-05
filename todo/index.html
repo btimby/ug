@@ -37,16 +37,13 @@
       },
 
       mounted() {
-        window.ug.on('server', () => {
-          console.log('Server!')
-        });
+        window.ug.ping();
         this.getTodos();
       },
 
       watch: {
         todos: {
           handler() {
-              console.log('Storing todo items.');
               localStorage.setItem('todos', JSON.stringify(this.todos));
             },
           deep: true,
@@ -55,7 +52,6 @@
 
       methods: {
         getTodos() {
-          console.log('Loading todo items.');
           const todos = JSON.parse(localStorage.getItem('todos'));
           this.todos = todos || [];
         },

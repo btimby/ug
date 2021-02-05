@@ -18,7 +18,57 @@ class Client {
     this.wt = wt;
     this.app = app;
     this.torrent = torrent;
-    this.bugout = new Bugout();
+    // NOTE: this identifier needs to be in app.json. It is derived from the public key.
+    this.bugout = new Bugout('bQbMZuTc2gq8mac4oAZ88JW13LKrDFwYj3', {
+      torrent: torrent,
+      seed: this.seed,
+    });
+    this.seed = this.bugout.seed;
+    this.bugout.on('announce', () => {
+      debug('client: announce');
+    });
+    this.bugout.on('torrent', () => {
+      debug('client: torrent');
+    });
+    this.bugout.on('tracker', () => {
+      debug('client: tracker');
+    });
+    this.bugout.on('tineout', () => {
+      debug('client: tineout');
+    });
+    this.bugout.on('seen', () => {
+      debug('client: seen');
+    });
+    this.bugout.on('left', () => {
+      debug('client: left');
+    });
+    this.bugout.on('connections', () => {
+      debug('client: connections');
+    });
+    this.bugout.on('rpc', () => {
+      debug('client: rpc');
+    });
+    this.bugout.on('rpc-response', () => {
+      debug('client: rpc-response');
+    });
+    this.bugout.on('ping', () => {
+      debug('client: ping');
+    });
+    this.bugout.on('message', () => {
+      debug('client: message');
+    });
+    this.bugout.on('server', () => {
+      debug('client: server');
+    });
+    this.bugout.on('wire', () => {
+      debug('client: wire');
+    });
+    this.bugout.on('wireleft', () => {
+      debug('client: wireleft');
+    });
+    this.bugout.on('wireseen', () => {
+      debug('client: wireseen');
+    });
     this.localStorage = new PrefixedLocalStorage(this.prefix);
     this.sessionStorage = new PrefixedSessionStorage(this.prefix);
   }
@@ -56,8 +106,52 @@ class Server extends EventEmitter {
     });
     // Store the see for next time.
     this.seed = this.bugout.seed;
-    debug(`Bugout identifier: ${this.bugout.identifier}`);
     this.bugout.register('ping', this.ping.bind(this));
+    this.bugout.on('announce', () => {
+      debug('server: announce');
+    });
+    this.bugout.on('torrent', () => {
+      debug('server: torrent');
+    });
+    this.bugout.on('tracker', () => {
+      debug('server: tracker');
+    });
+    this.bugout.on('tineout', () => {
+      debug('server: tineout');
+    });
+    this.bugout.on('seen', () => {
+      debug('server: seen');
+    });
+    this.bugout.on('left', () => {
+      debug('server: left');
+    });
+    this.bugout.on('connections', () => {
+      debug('server: connections');
+    });
+    this.bugout.on('rpc', () => {
+      debug('server: rpc');
+    });
+    this.bugout.on('rpc-response', () => {
+      debug('server: rpc-response');
+    });
+    this.bugout.on('ping', () => {
+      debug('server: ping');
+    });
+    this.bugout.on('message', () => {
+      debug('server: message');
+    });
+    this.bugout.on('server', () => {
+      debug('server: server');
+    });
+    this.bugout.on('wire', () => {
+      debug('server: wire');
+    });
+    this.bugout.on('wireleft', () => {
+      debug('server: wireleft');
+    });
+    this.bugout.on('wireseen', () => {
+      debug('server: wireseen');
+    });
     this.localStorage = new PrefixedLocalStorage(this.prefix);
     this.sessionStorage = new PrefixedSessionStorage(this.prefix);
     this._stats = {

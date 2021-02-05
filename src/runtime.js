@@ -46,10 +46,10 @@ class Runtime {
 
     // Methods exposed to scripts.
     window.ug = {
-      ping: this.ping.bind(this),
-      send: bugout.send,
-      rpc: bugout.rpc,
-      on: bugout.on,
+      ping: bugout.ping.bind(bugout),
+      send: bugout.send.bind(bugout),
+      rpc: bugout.rpc.bind(bugout),
+      on: bugout.on.bind(bugout),
     };
   }
 
@@ -98,10 +98,6 @@ class Runtime {
       debug('Removing host iframe.');
       iframe.remove();
     }
-  }
-
-  ping() {
-    return 'pong';
   }
 }
 
