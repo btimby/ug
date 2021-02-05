@@ -3,11 +3,11 @@ const fs = require('fs');
 const { EventEmitter } = require('events');
 const { assert } = require('chai');
 const JSZip = require('jszip');
-const SHA256 = require('crypto-js/sha256');
-const rs = require('jsrsasign');
 const glob = require('glob-fs');
 const isGlob = require('is-glob');
 const debug = require('debug')('ug:index');
+const nacl = require('tweetnacl');
+const bs58 = require("bs58");
 
 
 const RE_INDEX = /index.html?/gi;
@@ -21,35 +21,28 @@ class Application extends EventEmitter {
   constructor(fields) {
     super();
     this.fields = fields;
-    this._key = fields.key;
-    this._pub = null;
+    this._key = null;
     this._files = {};
   }
 
-  get privateKey() {
-    assert(this._key.isPrivate, 'No private key')
-    return this._key;
-  }
-
-  get publicKey() {
-    if (this._pub === null) {
-      if (this._key.isPrivate) {
-        // Extract public portion of the key.
-        const pubKeyJWK = rs.KEYUTIL.getJWKFromKey(this._key);
-        this._pub = rs.KEYUTIL.getPEM(rs.KEYUTIL.getKey({
-          e: pubKeyJWK.e,
-          kty: pubKeyJWK.kty,
-          n: pubKeyJWK.n,
-        }));
+  get key() {
+    if (this._key === null) {
+      const key = Uint8Array.from(bs58.decode(this.fields.key));
+      if (key.length === nacl.sign.secretKeyLength) {
+        // We have a secret key, we can create the key pair.
+        this._key = nacl.sign.keyPair.fromSecretKey(key);
+      } else if (key.length === nacl.sign.publicKeyLength) {
+        // We have only the public key...
+        this._key = { publicKey: key };
       } else {
-        this._pub = this._key;
+        throw new Error('Invalid key');
       }
     }
 
-    return this._pub;
+    return this._key;
   }
 
-  _manifest(exclude) {
+  _manifest(...exclude) {
     debug('Generating manifest.');
 
     const manifest = {};
@@ -63,9 +56,6 @@ class Application extends EventEmitter {
       manifest[key] = this.fields[key];
     }
 
-    // Only include public key.
-    manifest.key = this.publicKey;
-
     return manifest;
   }
 
@@ -75,10 +65,8 @@ class Application extends EventEmitter {
 
     const manifest = this._manifest();
     const str = JSON.stringify(manifest, (key, val) => (key === 'signature') ? undefined : val);
-    const sig = new rs.Signature({alg: 'SHA256withRSA'});
-    sig.init(this.privateKey);
-    sig.updateString(str);
-    this.fields.signature = manifest.signature = sig.sign();
+    const sig = nacl.sign.detached(Uint8Array.from(str), this.key.secretKey);
+    this.fields.signature = manifest.signature = bs58.encode(sig);
     return manifest;
     }
 
@@ -90,12 +78,10 @@ class Application extends EventEmitter {
       throw new Error('No signature');
     }
 
-    const manifest = this._manifest(['signature']);
+    const manifest = this._manifest('signature');
+    const sig = bs58.decode(this.fields.signature);
     const str = JSON.stringify(manifest, (key, val) => (key === 'signature') ? undefined : val);
-    const sig = new rs.Signature({alg: 'SHA256withRSA'});
-    sig.init(this.publicKey);
-    sig.updateString(str);
-    assert(sig.verify(this.fields.signature), 'Invalid signature');
+    assert(nacl.sign.detached.verify(Uint8Array.from(str), sig, this.key.publicKey), 'Invalid signature');
   }
 
   get names() {
@@ -122,7 +108,8 @@ class Application extends EventEmitter {
       this._readFile(path)
         .then((body) => {
           const file = this.fields.files.find((f) => (f.name === path));
-          if (!file || file.hash !== SHA256(body).toString()) {
+          if (!file || file.hash !== bs58.encode(nacl.hash(Uint8Array.from(body)))) {
+            debug('hash: %s !== %s', file.hash, bs58.encode(nacl.hash(Uint8Array.from(body))));
             reject(new Error('Invalid hash'));
             return;
           }
@@ -220,9 +207,8 @@ class ParsedApplication extends Application {
 
     const fields = JSON.parse(fs.readFileSync(path));
     const basePath = pathlib.dirname(path);
-
-    fields.key = rs.KEYUTIL.getKey(
-      fs.readFileSync(pathlib.join(basePath, fields.key)).toString());
+    const keyPair = nacl.sign.keyPair();
+    fields.key = bs58.encode(keyPair.secretKey);
 
     const files = {};
     fields.files = [];
@@ -243,7 +229,7 @@ class ParsedApplication extends Application {
         const path = paths[i];
         const key = pathlib.relative(basePath, path);
         const body = fs.readFileSync(path).toString();
-        const hash = SHA256(body).toString();
+        const hash = bs58.encode(nacl.hash(Uint8Array.from(body)));
 
         files[key] = {
           body,
@@ -401,7 +387,7 @@ class TorrentApplication extends Application {
   }
 }
 
-function compile(inPath, outPath) {
+function compile(inPath) {
   return ParsedApplication.parse(inPath);
 }
 

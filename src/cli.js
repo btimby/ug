@@ -17,10 +17,13 @@ function main(args) {
       // outPath will be generated if omitted.
       const outPath = args[2];
 
-      const app = compile(inPath, outPath);
+      const app = compile(inPath);
       app
-        .save()
-        .then((path) => console.log(`Done, ${path} written.`));
+        .save(outPath)
+        .then((path) => {
+          app.verify();
+          console.log(`Done, ${path} written.`)
+        });
       break;
 
     case 'serve':

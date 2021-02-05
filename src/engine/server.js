@@ -280,11 +280,15 @@ class Entry {
     // Server.
     return new Promise((resolve, reject) => {
       // TODO: move torrent creation to index.js:Application.
+      // NOTE: don't leak the private key.
+      const fields = app._manifest('key');
+      fields.key = app.key.publicKey;
       let appJson;
+
       if (isBrowser()) {
-        appJson = new File([JSON.stringify(app._manifest())], 'app.json');
+        appJson = new File([JSON.stringify(fields)], 'app.json');
       } else {
-        appJson = Buffer.from(JSON.stringify(app._manifest()));
+        appJson = Buffer.from(JSON.stringify(fields));
         appJson.name = 'app.json';
       }
       const fileObjs = [
