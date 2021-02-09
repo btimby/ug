@@ -101,9 +101,13 @@ describe('view.js', () => {
     beforeEach(() => {
       const server = {
         id: 'foo',
-        send() {},
         bugout: {
+          ping() {
+            return 'pong';
+          },
+          send() {},
           rpc() {},
+          on() {},
         },
       };
       runtime = new Runtime(server, true);

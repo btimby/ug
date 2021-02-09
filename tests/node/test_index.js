@@ -26,7 +26,7 @@ describe('index.js', () => {
               app.verify();
 
               // Ensure private key is not leaked.
-              assert.throws(() => { app.privateKey }, 'No private key');
+              assert.isUndefined(app.key.privateKey);
 
               // Ensure we can read a file.
               app.readFile(app.fields.index);
