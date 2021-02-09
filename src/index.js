@@ -28,6 +28,7 @@ class Application extends EventEmitter {
   get key() {
     if (this._key === null) {
       const key = Uint8Array.from(bs58.decode(this.fields.key));
+
       if (key.length === nacl.sign.secretKeyLength) {
         // We have a secret key, we can create the key pair.
         this._key = nacl.sign.keyPair.fromSecretKey(key);
@@ -63,12 +64,13 @@ class Application extends EventEmitter {
     /* Signs fields. */
     debug('Signing manifest');
 
-    const manifest = this._manifest();
-    const str = JSON.stringify(manifest, (key, val) => (key === 'signature') ? undefined : val);
+    const manifest = this._manifest('key', 'signature');
+    const str = JSON.stringify(manifest);
     const sig = nacl.sign.detached(Uint8Array.from(str), this.key.secretKey);
     this.fields.signature = manifest.signature = bs58.encode(sig);
+    manifest.key = this.fields.key;
     return manifest;
-    }
+  }
 
   verify() {
     /* Verifies the signature and hashes of the application. */
@@ -78,9 +80,9 @@ class Application extends EventEmitter {
       throw new Error('No signature');
     }
 
-    const manifest = this._manifest('signature');
+    const manifest = this._manifest('key', 'signature');
     const sig = bs58.decode(this.fields.signature);
-    const str = JSON.stringify(manifest, (key, val) => (key === 'signature') ? undefined : val);
+    const str = JSON.stringify(manifest);
     assert(nacl.sign.detached.verify(Uint8Array.from(str), sig, this.key.publicKey), 'Invalid signature');
   }
 

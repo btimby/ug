@@ -2,6 +2,7 @@ const { EventEmitter } = require('events');
 const WebTorrent = require('webtorrent');
 const debug = require('debug')('ug:engine:server');
 const Bugout = require('bugout');
+const bs58 = require('bs58');
 const { TorrentApplication, PackageApplication, isBrowser } = require('../index');
 const { PrefixedLocalStorage, PrefixedSessionStorage } = require('./storage')
 
@@ -282,7 +283,7 @@ class Entry {
       // TODO: move torrent creation to index.js:Application.
       // NOTE: don't leak the private key.
       const fields = app._manifest('key');
-      fields.key = app.key.publicKey;
+      fields.key = bs58.encode(app.key.publicKey);
       let appJson;
 
       if (isBrowser()) {
