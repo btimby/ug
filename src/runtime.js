@@ -31,6 +31,8 @@ class Runtime {
 
   install(window, document) {
     const bugout = this.server.bugout;
+    const app = this.server.app;
+    const serverAddr = bugout.encodeaddress(app.key.publicKey);
     const windowAttrs = {
       // Provide prefixed storage.
       localStorage: this.localStorage,
@@ -48,7 +50,9 @@ class Runtime {
     window.ug = {
       ping: bugout.ping.bind(bugout),
       send: bugout.send.bind(bugout),
-      rpc: bugout.rpc.bind(bugout),
+      rpc: (name, obj) => {
+        bugout.rpc(serverAddr, name, obj);
+      },
       on: bugout.on.bind(bugout),
     };
   }

@@ -99,9 +99,17 @@ describe('view.js', () => {
     let runtime;
 
     beforeEach(() => {
+      // TODO: Use a real app, torrent, bugout instance, refer to webtorrent tests for disabling
+      // network access under test.
       const server = {
         id: 'foo',
+        app: {
+          key: {
+            publicKey: 'foo',
+          },
+        },
         bugout: {
+          encodeaddress() {},
           ping() {
             return 'pong';
           },

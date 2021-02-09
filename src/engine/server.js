@@ -15,16 +15,11 @@ const TRACKERS = [
 
 
 class Client {
-  constructor(wt, app, torrent) {
-    this.wt = wt;
+  constructor(bugout, app, torrent) {
+    this.wt = bugout.wt;
     this.app = app;
     this.torrent = torrent;
-    // NOTE: this identifier needs to be in app.json. It is derived from the public key.
-    this.bugout = new Bugout('bQbMZuTc2gq8mac4oAZ88JW13LKrDFwYj3', {
-      torrent: torrent,
-      seed: this.seed,
-    });
-    this.seed = this.bugout.seed;
+    this.bugout = bugout;
     this.bugout.on('announce', () => {
       debug('client: announce');
     });
@@ -100,13 +95,12 @@ class Server extends EventEmitter {
     this.wt = wt;
     this.app = app;
     this.torrent = torrent;
-    // Retrieve the seed if it exists.
+    debug('Key: %O', bs58.encode(app.key.publicKey));
     this.bugout = new Bugout({
       torrent: torrent,
-      seed: this.seed,
+      keyPair: app.key,
     });
-    // Store the see for next time.
-    this.seed = this.bugout.seed;
+    debug('Key: %O', this.bugout.encodeaddress(app.key.publicKey));
     this.bugout.register('ping', this.ping.bind(this));
     this.bugout.on('announce', () => {
       debug('server: announce');
@@ -328,17 +322,22 @@ class Entry {
   static fetch(wt, id) {
     return new Promise((resolve, reject) => {
       debug(`Creating new client for ${id}`);
-      const privateWt = new WebTorrent(wt.opts);
+      //const privateWt = new WebTorrent(wt.opts);
       const opts = {
         announce: TRACKERS,
       };
-
-      privateWt.add(id, opts, (torrent) => {
+      wt = new WebTorrent(wt.opts);
+      const torrent = wt.add(id, opts);
+      const bugout = new Bugout({
+        wt,
+        torrent,
+      });
+      torrent.on('ready', () => {
         debug('Torrent added');
         TorrentApplication.load(torrent)
           .then((app) => {
             const entry = new Entry(wt, app);
-            const client = new Client(privateWt, app, torrent);
+            const client = new Client(bugout, app, torrent);
             resolve({ entry, client });
           })
           .catch(reject);  
