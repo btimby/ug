@@ -1,4 +1,5 @@
 const { assert } = require('chai');
+const debug = require('debug')('ug:engine:collection');
 
 
 class Collection {
@@ -11,8 +12,15 @@ class Collection {
     this._version = 0;
   }
 
+  _makeKey(name) {
+    name = name || this._name;
+    return `collection:${name}`;
+  }
+
   static _load(storage, name) {
-    let str = storage.getItem(`collection:${name}`);
+    const key = this._makeKey(name);
+    debug('Loading %s', key);
+    let str = storage.getItem(key);
     if (!str) {
       throw new Error(`Collection "${name}" does not exist.`);
     }
@@ -24,7 +32,9 @@ class Collection {
   }
 
   _save() {
+    const key = this._makeKey();
     if (this._synched === this._version) {
+      debug('Skipping %s save version %i', key, this._version);
       return;
     }
     const str = JSON.stringify({
@@ -32,12 +42,15 @@ class Collection {
       data: this._data,
       version: this._version,
     });
-    this.storage.setItem(`collection:${this.name}`, str);
+    debug('Saving %s version %i, length: %i', key, this._version, str.length);
+    this.storage.setItem(key, str);
     this._synched = this._version;
   }
 
   _destroy() {
-    this.storage.removeItem(`collection:${this.name}`);
+    const key = this._makeKey();
+    debug('Destroying %s', key);
+    this.storage.removeItem(key);
   }
 
   get name() {
@@ -68,6 +81,7 @@ class Collection {
     if (opts && opts.value !== this._data[key]) {
       throw new Error('Value mismatch');
     }
+    debug('Setting %s.%s to %s', this._name, key, value);
     this._data[key] = value;
     this._version++;
     this._save();
@@ -88,6 +102,7 @@ class Collection {
       items.push(obj)
     }
 
+    debug('Listing %i items from %s', items.length, this._name);
     return items;
   }
 
@@ -95,6 +110,7 @@ class Collection {
     if (opts && opts.value !== this._data[key]) {
       throw new Error('Value mismatch');
     }
+    debug('Removing %s.%s', this._name, key);
     delete this._data[key]
     this._version++;
     this._save();
@@ -104,6 +120,7 @@ class Collection {
     if (opts && opts.version !== this._version) {
       throw new Error('Version mismatch');
     }
+    debug('Clearing %s', this._name);
     this._data = {};
     this._version++;
     this._save();
@@ -123,6 +140,7 @@ class CollectionManager {
       return;
     }
     const collections = JSON.parse(str);
+    debug('Loading %i collections', collections.length);
 
     collections.forEach((name) => {
       this.collections[name] = Collection._load(this.storage, name);
@@ -130,6 +148,7 @@ class CollectionManager {
   }
 
   _save() {
+    debug('Saving %i collections', this.collections.length);
     const str = JSON.stringify(Object.keys(this.collections));
     this.storage.setItem('collections', str);
     for (let name in this.collections) {
@@ -137,42 +156,48 @@ class CollectionManager {
     }
   }
 
+  _get_collection(name) {
+    const collection = this.collections[name];
+    if (!collection) {
+      throw new Error('Invalid collection name');
+    }
+    return collection;
+  }
+
   create(name, opts) {
     assert.isUndefined(this.collections[name], 'Collection exists');
+    debug('Adding new collection %s', name);
     this.collections[name] = new Collection(this.storage, name, opts);
     this._save();
   }
 
   update(name, opts) {
-    this.collections[name].opts = opts;
+    this._get_collection(name).opts = opts;
     this._save();
   }
 
   clear(name, opts) {
-    this.collections[name].clear(opts);
+    this._get_collection(name).clear(opts);
   }
 
   get(name, key) {
-    return this.collections[name].get(key);
+    return this._get_collection(name).get(key);
   }
 
   set(name, key, value, opts) {
-    this.collections[name].set(key, value, opts);
+    this._get_collection(name).set(key, value, opts);
   }
 
   list(name, opts) {
-    return this.collections[name].list(opts);
+    return this._get_collection(name).list(opts);
   }
 
   remove(name, key, opts) {
-    this.collections[name].remove(key, opts);
+    this._get_collection(name).remove(key, opts);
   }
 
   destroy(name, opts) {
-    const collection = this.collections[name];
-    if (!collection) {
-      throw new Error('Invalid collection name');
-    }
+    const collection = this._get_collection(name);
     if (opts && opts.version !== collection._version) {
       throw new Error('Version mismatch');
     }
