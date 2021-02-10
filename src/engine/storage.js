@@ -1,3 +1,4 @@
+const localStorage = window.localStorage || require('node-localstorage')('/tmp');
 const debug = require('debug')('ug:engine:storage');
 
 

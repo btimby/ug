@@ -17,6 +17,7 @@ runtime.install(window, document);
 delete runtime;
 `;
 const SANDBOX_ARGS = 'allow-forms allow-popups allow-modals allow-scripts';
+const RUNTIME_VERSION = '1.0.0';
 
 
 class Runtime {
@@ -46,14 +47,120 @@ class Runtime {
       })
     }
 
+    const rpc = (name, args, cb) => {
+      bugout.rpc(serverAddr, name, [], cb);
+    }
+
     // Methods exposed to scripts.
     window.ug = {
-      ping: bugout.ping.bind(bugout),
-      send: bugout.send.bind(bugout),
-      rpc: (name, obj) => {
-        bugout.rpc(serverAddr, name, obj);
+      create(name, opts, cb) {
+        if (typeof opts === 'function') {
+          cb, opts = opts, null;
+        }
+        const args = {
+          name, opts,
+        };
+        rpc('collection.create', args, (r) => {
+          debug('callback: collection.create(%s) === %O', name, r);
+          if (typeof cb === 'function') {
+            cb(r);
+          }
+        })
       },
-      on: bugout.on.bind(bugout),
+
+      update(name, opts, cb) {
+        if (typeof opts === 'function') {
+          cb, opts = opts, null;
+        }
+        const args = {
+          name, opts,
+        };
+        rpc('collection.update', args, (r) => {
+          debug('callback: collection.update(%s) === %O', name, r);
+          if (typeof cb === 'function') {
+            cb(r);
+          }
+        });
+      },
+
+      set(name, key, value, opts, cb) {
+        if (typeof opts === 'function') {
+          cb, opts = opts, null;
+        }
+        const args = {
+          name, key, value, opts,
+        };
+        rpc('collection.write', args, (r) => {
+          debug('callback: collection.write(%s, %s) === %O', name, key, r);
+          if (typeof cb === 'function') {
+            cb(r);
+          }
+        });
+      },
+
+      list(name, opts, cb) {
+        if (typeof opts === 'function') {
+          cb, opts = opts, null;
+        }
+        const args = {
+          name, opts,
+        };
+        rpc('collection.list', args, (r) => {
+          debug('callback: collection.list(%s) === %O', name, r);
+          if (typeof cb === 'function') {
+            cb(r);
+          }
+        });
+      },
+
+      clear(name, opts, cb) {
+        if (typeof opts === 'function') {
+          cb, opts = opts, null;
+        }
+        const args = {
+          name, opts,
+        };
+        rpc('collection.clear', args, (r) => {
+          debug('callback: collection.clear(%s) === %O', name, r);
+          if (typeof cb === 'function') {
+            cb(r);
+          }
+        });
+      },
+
+      get(name, key, opts, cb) {
+        if (typeof opts === 'function') {
+          cb, opts = opts, null;
+        }
+        const args = {
+          name, key, opts,
+        };
+        rpc('collection.get', args, (r) => {
+          debug('callback: collection.get(%s, %s) === %O', name, key, r);
+          if (typeof cb === 'function') {
+            cb(r);
+          }
+        });
+      },
+
+      remove(name, key, opts, cb) {
+        if (typeof opts === 'function') {
+          cp, opts = opts, null;
+        }
+        const args = {
+          name, key, opts,
+        };
+        rpc('collection.remove', args, (r) => {
+          debug('callback: collection.remove(%s, %s) === %O', name, key, r);
+          if (typeof cb === 'function') {
+            cb(r);
+          }
+        });
+      },
+
+      version() {
+        return RUNTIME_VERSION;
+      }
     };
   }
 
@@ -107,4 +214,5 @@ class Runtime {
 
 module.exports = {
   Runtime,
+  RUNTIME_VERSION,
 };

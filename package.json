@@ -25,6 +25,7 @@
     "is-glob": "^4.0.1",
     "jszip": "^3.5.0",
     "ls-chunk-store": "^2.0.0",
+    "node-localstorage": "^2.1.6",
     "tweetnacl": "^1.0.3",
     "webextension-polyfill": "^0.7.0",
     "webtorrent": "^0.112.0",

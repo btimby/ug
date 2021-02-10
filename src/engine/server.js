@@ -5,6 +5,7 @@ const Bugout = require('bugout');
 const bs58 = require('bs58');
 const { TorrentApplication, PackageApplication, isBrowser } = require('../index');
 const { PrefixedLocalStorage, PrefixedSessionStorage } = require('./storage')
+const { CollectionManager } = require('./collection');
 
 const TRACKERS = [
   "wss://tracker.openwebtorrent.com",
@@ -12,6 +13,20 @@ const TRACKERS = [
   // "wss://tracker.fastcast.nz",
   // "wss://tracker.btorrent.xyz"
 ];
+// default collection owner permissions;
+const OWNER = {
+  read: true,
+  write: true,
+  remove: true,
+  overwrite: true,
+};
+// default collection other permissions.
+const OTHER = {
+  read: true,
+  write: false,
+  remove: false,
+  overwrite: false,
+};
 
 
 class Client {
@@ -20,51 +35,6 @@ class Client {
     this.app = app;
     this.torrent = torrent;
     this.bugout = bugout;
-    this.bugout.on('announce', () => {
-      debug('client: announce');
-    });
-    this.bugout.on('torrent', () => {
-      debug('client: torrent');
-    });
-    this.bugout.on('tracker', () => {
-      debug('client: tracker');
-    });
-    this.bugout.on('tineout', () => {
-      debug('client: tineout');
-    });
-    this.bugout.on('seen', () => {
-      debug('client: seen');
-    });
-    this.bugout.on('left', () => {
-      debug('client: left');
-    });
-    this.bugout.on('connections', () => {
-      debug('client: connections');
-    });
-    this.bugout.on('rpc', () => {
-      debug('client: rpc');
-    });
-    this.bugout.on('rpc-response', () => {
-      debug('client: rpc-response');
-    });
-    this.bugout.on('ping', () => {
-      debug('client: ping');
-    });
-    this.bugout.on('message', () => {
-      debug('client: message');
-    });
-    this.bugout.on('server', () => {
-      debug('client: server');
-    });
-    this.bugout.on('wire', () => {
-      debug('client: wire');
-    });
-    this.bugout.on('wireleft', () => {
-      debug('client: wireleft');
-    });
-    this.bugout.on('wireseen', () => {
-      debug('client: wireseen');
-    });
     this.localStorage = new PrefixedLocalStorage(this.prefix);
     this.sessionStorage = new PrefixedSessionStorage(this.prefix);
   }
@@ -76,17 +46,6 @@ class Client {
   get prefix() {
     return `c:${this.id}`;
   }
-
-  get seed() {
-    const seed = localStorage.getItem(`${this.prefix}:seed`);
-    debug(`Loaded seed ${seed} for ${this.id}`);
-    return seed;
-  }
-
-  set seed(value) {
-    localStorage.setItem(`${this.prefix}:seed`, value);
-    debug(`Saved seed ${value} for ${this.id}`);
-  }
 }
 
 class Server extends EventEmitter {
@@ -95,60 +54,30 @@ class Server extends EventEmitter {
     this.wt = wt;
     this.app = app;
     this.torrent = torrent;
-    debug('Key: %O', bs58.encode(app.key.publicKey));
-    this.bugout = new Bugout({
-      torrent: torrent,
+    this.bugout = new Bugout(this.id, {
+      wt,
+      torrent,
       keyPair: app.key,
     });
-    debug('Key: %O', this.bugout.encodeaddress(app.key.publicKey));
-    this.bugout.register('ping', this.ping.bind(this));
-    this.bugout.on('announce', () => {
-      debug('server: announce');
+    this.ls = new PrefixedLocalStorage(this.prefix);
+    this.ss = new PrefixedSessionStorage(this.prefix);
+    this.cm = new CollectionManager(this.ls);
+    // TODO: register application specific RPC here.
+    this.bugout.register('collection.create', (address, args, cb) => {
+      args.permissions[address] = OWNER;
+      args.permissions[null] = args.permissions[null] || OTHER;
+      const name = args.name;
+      delete args.name;
+
+      try {
+        this.cm.create(name, args);
+      } catch (e) {
+        cb(e);
+        return;
+      }
+      cb();
     });
-    this.bugout.on('torrent', () => {
-      debug('server: torrent');
-    });
-    this.bugout.on('tracker', () => {
-      debug('server: tracker');
-    });
-    this.bugout.on('tineout', () => {
-      debug('server: tineout');
-    });
-    this.bugout.on('seen', () => {
-      debug('server: seen');
-    });
-    this.bugout.on('left', () => {
-      debug('server: left');
-    });
-    this.bugout.on('connections', () => {
-      debug('server: connections');
-    });
-    this.bugout.on('rpc', () => {
-      debug('server: rpc');
-    });
-    this.bugout.on('rpc-response', () => {
-      debug('server: rpc-response');
-    });
-    this.bugout.on('ping', () => {
-      debug('server: ping');
-    });
-    this.bugout.on('message', () => {
-      debug('server: message');
-    });
-    this.bugout.on('server', () => {
-      debug('server: server');
-    });
-    this.bugout.on('wire', () => {
-      debug('server: wire');
-    });
-    this.bugout.on('wireleft', () => {
-      debug('server: wireleft');
-    });
-    this.bugout.on('wireseen', () => {
-      debug('server: wireseen');
-    });
-    this.localStorage = new PrefixedLocalStorage(this.prefix);
-    this.sessionStorage = new PrefixedSessionStorage(this.prefix);
+    // this.bugout.register('ping', this.ping.bind(this));
     this._stats = {
       peers: 0,
       uploaded: 0,
@@ -217,23 +146,6 @@ class Server extends EventEmitter {
 
   get prefix() {
     return `s:${this.id}`;
-  }
-
-  get seed() {
-    const seed = localStorage.getItem(`${this.prefix}:seed`);
-    debug(`Loaded seed ${seed} for ${this.id}`);
-    return seed;
-  }
-
-  set seed(value) {
-    localStorage.setItem(`${this.prefix}:seed`, value);
-    debug(`Saved seed ${value} for ${this.id}`);
-  }
-
-  // ping RPC call.
-  ping(address, args, callback) {
-    args.hello = `Hello ${address} from ${this.bugout.address()}`;
-    callback(args);
   }
 }
 
@@ -328,7 +240,7 @@ class Entry {
       };
       wt = new WebTorrent(wt.opts);
       const torrent = wt.add(id, opts);
-      const bugout = new Bugout({
+      const bugout = new Bugout(id, {
         wt,
         torrent,
       });

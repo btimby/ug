@@ -1,5 +1,5 @@
 const { parseHtml, parseQs } = require('../../src/view');
-const { Runtime } = require('../../src/runtime');
+const { Runtime, RUNTIME_VERSION } = require('../../src/runtime');
 
 
 // Building blocks.
@@ -110,12 +110,6 @@ describe('view.js', () => {
         },
         bugout: {
           encodeaddress() {},
-          ping() {
-            return 'pong';
-          },
-          send() {},
-          rpc() {},
-          on() {},
         },
       };
       runtime = new Runtime(server, true);
@@ -151,13 +145,13 @@ describe('view.js', () => {
       // A runtime for our test run.
       runtime
         .execute('<h1>Hi</h1>', [
-          'window.ping = ug.ping();',
+          'window.ping = ug.version();',
         ])
         .then(() => {
           const frame = document.getElementById('host');
 
           // Ensure script can access it's own document, window.
-          assert.strictEqual(frame.contentWindow.ping, 'pong');
+          assert.strictEqual(frame.contentWindow.ping, RUNTIME_VERSION);
 
           done();
         })
