@@ -39,7 +39,8 @@ describe('collection.js', () => {
 
       assert.strictEqual(cm.get('foobar', 'foo'), 'bar');
       const left = JSON.parse(localStorage.getItem('collection:foobar'));
-      const right = { ...COLLECTION, data: { 'foo': 'bar' }};
+      const right = { version: 1, data: { 'foo': 'bar' }};
+      assert.deepStrictEqual(left, right);
     });
 
     it('can clear', () => {
@@ -66,7 +67,7 @@ describe('collection.js', () => {
       assert.deepStrictEqual(collection, { ...COLLECTION, version: 2});
     });
 
-    it('list', () => {
+    it('can list', () => {
       cm.set('foobar', 'foo', 'bar');
       let items = cm.list('foobar', { values: true });
       assert.deepStrictEqual(items, [{ key: 'foo', value: 'bar'  }]);
