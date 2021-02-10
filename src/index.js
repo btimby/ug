@@ -408,12 +408,14 @@ function torrent(torrent) {
   return TorrentApplication.load(torrent);
 }
 
+// Compatability (node / browser).
 const isBrowser = new Function('return (typeof(window) !== "undefined" && this === window);');
 const isNode = new Function('return (typeof(global) !== "undefined" && this === global);');
 const isExtension = new Function('return (typeof(window) !== "undefined" && this === window && "browser" in window);');
 
 const atob = (isBrowser()) ? window.atob : require('atob');
 const btoa = (isBrowser()) ? window.btoa : require('btoa');
+// TODO: configurable or dynamic path.
 const localStorage = (isBrowser()) ? window.localStorage : new DomStorage('/tmp/local.json');
 const sessionStorage = (isBrowser()) ? window.sessionStorage : new DomStorage('/tmp/session.json');
 
