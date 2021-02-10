@@ -156,7 +156,7 @@ class CollectionManager {
     }
   }
 
-  _get_collection(name) {
+  get_collection(name) {
     const collection = this.collections[name];
     if (!collection) {
       throw new Error('Invalid collection name');
@@ -172,32 +172,32 @@ class CollectionManager {
   }
 
   update(name, opts) {
-    this._get_collection(name).opts = opts;
+    this.get_collection(name).opts = opts;
     this._save();
   }
 
   clear(name, opts) {
-    this._get_collection(name).clear(opts);
+    this.get_collection(name).clear(opts);
   }
 
   get(name, key) {
-    return this._get_collection(name).get(key);
+    return this.get_collection(name).get(key);
   }
 
   set(name, key, value, opts) {
-    this._get_collection(name).set(key, value, opts);
+    this.get_collection(name).set(key, value, opts);
   }
 
   list(name, opts) {
-    return this._get_collection(name).list(opts);
+    return this.get_collection(name).list(opts);
   }
 
   remove(name, key, opts) {
-    this._get_collection(name).remove(key, opts);
+    this.get_collection(name).remove(key, opts);
   }
 
   destroy(name, opts) {
-    const collection = this._get_collection(name);
+    const collection = this.get_collection(name);
     if (opts && opts.version !== collection._version) {
       throw new Error('Version mismatch');
     }
