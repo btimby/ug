@@ -62,11 +62,12 @@ class Server extends EventEmitter {
     this.ls = new PrefixedLocalStorage(this.prefix);
     this.ss = new PrefixedSessionStorage(this.prefix);
     this.cm = new CollectionManager(this.ls);
+
     // TODO: register application specific RPC here.
     this.bugout.register('collection.create', (address, args, cb) => {
       args.permissions[address] = OWNER;
       args.permissions[null] = args.permissions[null] || OTHER;
-      const name = args.name;
+      const { name } = args;
       delete args.name;
 
       try {
@@ -77,7 +78,65 @@ class Server extends EventEmitter {
       }
       cb();
     });
-    // this.bugout.register('ping', this.ping.bind(this));
+
+    this.bugout.register('collection.set', (address, args, cb) => {
+      const { name, key, value } = args;
+      delete args.name;
+      delete args.key;
+      delete args.value;
+
+      try {
+        this.cm.set(name, key, value, args);
+      } catch (e) {
+        cb(e);
+        return;
+      }
+      cb();
+    });
+
+    this.bugout.register('collection.get', (address, args, cb) => {
+      const { name, key } = args;
+      delete args.name;
+      delete args.key;
+
+      let value;
+      try {
+        value = this.cm.get(name, key, args);
+      } catch (e) {
+        cb(e);
+        return;
+      }
+      cb(value);
+    });
+
+    this.bugout.register('collection.remove', (address, args, cb) => {
+      const { name, key } = args;
+      delete args.name;
+      delete args.key;
+
+      try {
+        this.cm.remove(name, key, args);
+      } catch (e) {
+        cb(e);
+        return;
+      }
+      cb();
+    });
+
+    this.bugout.register('collection.list', (address, args, cb) => {
+      const { name } = args;
+      delete args.name;
+      let list;
+
+      try {
+        list = this.cm.list(name, args);
+      } catch (e) {
+        cb(e);
+        return;
+      }
+      cb(list);
+    });
+
     this._stats = {
       peers: 0,
       uploaded: 0,

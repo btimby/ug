@@ -77,6 +77,20 @@ class Collection {
     return this._data[key];
   }
 
+  list(opts) {
+    const items = [];
+
+    for (let key in this.data) {
+      const obj = { key };
+      if (opts && opts.values) {
+        obj.value = this.data[key];
+      }
+      items.push(obj)
+    }
+
+    return items;
+  }
+
   remove(key, opts) {
     if (opts && opts.value !== this._data[key]) {
       throw new Error('Value mismatch');
@@ -144,6 +158,10 @@ class CollectionManager {
 
   set(name, key, value, opts) {
     this.collections[name].set(key, value, opts);
+  }
+
+  list(name, opts) {
+    return this.collections[name].list(opts);
   }
 
   remove(name, key, opts) {

@@ -90,8 +90,8 @@ class Runtime {
         const args = {
           name, key, value, opts,
         };
-        rpc('collection.write', args, (r) => {
-          debug('callback: collection.write(%s, %s) === %O', name, key, r);
+        rpc('collection.set', args, (r) => {
+          debug('callback: collection.set(%s, %s) === %O', name, key, r);
           if (typeof cb === 'function') {
             cb(r);
           }

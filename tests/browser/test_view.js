@@ -123,7 +123,7 @@ describe('view.js', () => {
     it('isolates parent window', (done) => {
       runtime
         .execute('<h1>Hi</h1>', [
-          'document.foo = window.parent.foo = window.foo = "foo"',
+          'document.foo = window.parent.foo = window.foo = "foo";',
         ])
         .then(() => {
           const frame = document.getElementById('host');
@@ -156,6 +156,10 @@ describe('view.js', () => {
           done();
         })
         .catch(done);
+    });
+
+    it('can handle database access', (done) => {
+      done();
     });
   });
 });

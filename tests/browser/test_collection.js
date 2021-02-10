@@ -7,7 +7,7 @@ const COLLECTION = {
 };
 
 
-describe('collection', () => {
+describe('collection.js', () => {
   describe('#CollectionManager', () => {
     let cm;
 
@@ -20,7 +20,7 @@ describe('collection', () => {
       cm.destroy('foobar');
     });
 
-    it('create()', () => {
+    it('can create', () => {
       assert.throws(() => {
         cm.create('foobar');
       }, 'Collection exists');
@@ -30,7 +30,7 @@ describe('collection', () => {
       assert.deepStrictEqual(collection, COLLECTION);
     });
 
-    it('set() and get()', () => {
+    it('can set and get', () => {
       cm.set('foobar', 'foo', 'bar');
 
       assert.throws(() => {
@@ -42,7 +42,7 @@ describe('collection', () => {
       const right = { ...COLLECTION, data: { 'foo': 'bar' }};
     });
 
-    it('clear()', () => {
+    it('can clear', () => {
       cm.set('foobar', 'foo', 'bar');
 
       assert.throws(() => {
@@ -54,7 +54,7 @@ describe('collection', () => {
       assert.deepStrictEqual(collection, { ...COLLECTION, version: 2});
     });
 
-    it('remove()', () => {
+    it('can remove', () => {
       cm.set('foobar', 'foo', 'bar');
 
       assert.throws(() => {
@@ -64,6 +64,16 @@ describe('collection', () => {
       cm.remove('foobar', 'foo');
       const collection = JSON.parse(localStorage.getItem('collection:foobar'));
       assert.deepStrictEqual(collection, { ...COLLECTION, version: 2});
+    });
+
+    it('list', () => {
+      cm.set('foobar', 'foo', 'bar');
+      let items = cm.list('foobar', { values: true });
+      assert.deepStrictEqual(items, [{ key: 'foo', value: 'bar'  }]);
+
+      cm.set('foobar', 'bar', 'quux');
+      items = cm.list('foobar');
+      assert.deepStrictEqual(items, [{ key: 'foo' }, { key: 'bar' }]);
     });
   });
 });
