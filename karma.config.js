@@ -10,7 +10,7 @@ module.exports = function(config) {
       'tests/browser/**/test_*.js': ['browserify'],
       'tests/test_*.js': ['browserify'],
     },
-    reporters: ['progress'],
+    reporters: ['coverage', 'progress'],
     port: 9876,
     colors: true,
     logLevel: config.LOG_INFO,
@@ -34,6 +34,10 @@ module.exports = function(config) {
     },
     browserify: {
       debug: true,
+    },
+    coverageReporter: {
+      dir: '.coverage',
+      type: 'html'
     }
   });
 };
