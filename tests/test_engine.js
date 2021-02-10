@@ -1,6 +1,7 @@
 const WebTorrent = require('webtorrent');
-const { Engine } = require('../../src/engine/index');
-const { PrefixedLocalStorage } = require('../../src/engine/storage');
+const { Engine } = require('../src/engine/index');
+const { atob, localStorage } = require('../src/index');
+const { PrefixedLocalStorage } = require('../src/engine/storage');
 const { assert } = require('chai');
 
 const FIELDS = {

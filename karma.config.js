@@ -3,11 +3,12 @@ module.exports = function(config) {
     basePath: '.',
     frameworks: ['browserify', 'mocha', 'chai'],
     files: [
-      'tests/browser/bus_mock.js',
       'tests/browser/**/test_*.js',
+      'tests/test_*.js',
     ],
     preprocessors: {
       'tests/browser/**/test_*.js': ['browserify'],
+      'tests/test_*.js': ['browserify'],
     },
     reporters: ['progress'],
     port: 9876,

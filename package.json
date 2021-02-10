@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test-browser": "karma start --single-run --browsers ChromeHeadlessNoSandbox,FirefoxHeadless karma.config.js",
-    "test-node": "mocha --recursive --full-trace tests/node/**/test_*.js",
+    "test-node": "mocha --recursive --full-trace tests/test_*.js tests/node/**/test_*.js",
     "debug-node": "mocha inspect --recursive --full-trace tests/node/**/test_*.js",
     "todo": "node src/cli.js compile todo/app.json",
     "serve-todo": "node src/cli.js serve todo.app",
@@ -16,8 +16,10 @@
   "author": "Ben Timby <btimby@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "atob": "^2.1.2",
     "bops": "^1.0.1",
     "bs58": "^4.0.1",
+    "btoa": "^1.2.1",
     "bugout": "git+https://github.com/btimby/bugout.git#opts.torrent",
     "cash-dom": "^8.1.0",
     "debug": "^4.3.1",
@@ -28,7 +30,7 @@
     "node-localstorage": "^2.1.6",
     "tweetnacl": "^1.0.3",
     "webextension-polyfill": "^0.7.0",
-    "webtorrent": "^0.112.0",
+    "webtorrent": "^0.112.4",
     "webtorrent-hybrid": "^4.0.3"
   },
   "devDependencies": {

@@ -5,6 +5,7 @@ const { assert } = require('chai');
 const JSZip = require('jszip');
 const glob = require('glob-fs');
 const isGlob = require('is-glob');
+const { LocalStorage } = require('node-localstorage');
 const debug = require('debug')('ug:index');
 const nacl = require('tweetnacl');
 const bs58 = require("bs58");
@@ -389,6 +390,12 @@ class TorrentApplication extends Application {
   }
 }
 
+class SessionStorage {
+  constructor() {
+    this._data = {};
+  }
+}
+
 function compile(inPath) {
   return ParsedApplication.parse(inPath);
 }
@@ -402,10 +409,13 @@ function torrent(torrent) {
 }
 
 const isBrowser = new Function('return (typeof(window) !== "undefined" && this === window);');
-
 const isNode = new Function('return (typeof(global) !== "undefined" && this === global);');
-
 const isExtension = new Function('return (typeof(window) !== "undefined" && this === window && "browser" in window);');
+
+const atob = (isBrowser()) ? window.atob : require('atob');
+const btoa = (isBrowser()) ? window.btoa : require('btoa');
+const localStorage = (isBrowser()) ? window.localStorage : new LocalStorage('/tmp');
+const sessionStorage = (isBrowser()) ? window.sessionStorage : new SessionStorage();
 
 
 module.exports = {
@@ -417,4 +427,8 @@ module.exports = {
   isBrowser,
   isNode,
   isExtension,
+  atob,
+  btoa,
+  localStorage,
+  sessionStorage,
 };

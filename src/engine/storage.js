@@ -1,5 +1,5 @@
-const localStorage = window.localStorage || require('node-localstorage')('/tmp');
 const debug = require('debug')('ug:engine:storage');
+const { localStorage, sessionStorage } = require('../index');
 
 
 class PrefixedStorage {

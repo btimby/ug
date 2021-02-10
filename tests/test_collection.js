@@ -1,4 +1,5 @@
-const { CollectionManager } = require('../../src/engine/collection');
+const { localStorage } = require('../src/index');
+const { CollectionManager } = require('../src/engine/collection');
 const { assert } = require('chai');
 
 const COLLECTION = {
